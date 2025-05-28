@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_order_form_withholding_cassa" model="ir.ui.view">
+        <field name="name">sale.order.form.withholding.cassa</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet//group[1]" position="inside">
+                <group string="Cassa e Ritenuta Previdenziale" colspan="4">
+                    <field name="apply_cassa"/>
+                    <field name="cassa_percent"/>
+                    <field name="apply_withholding"/>
+                    <field name="withholding_percent"/>
+                </group>
+            </xpath>
+
+            <xpath expr="//sheet//group[1]" position="after">
+                <group string="Totali Cassa e Ritenuta" colspan="4">
+                    <field name="total_gross" readonly="1"/>
+                    <field name="cassa_amount" readonly="1"/>
+                    <field name="withholding_amount" readonly="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+

@@ -1,0 +1,8 @@
+<odoo>
+  <template id="report_assets_inherit" inherit_id="web.report_layout">
+    <xpath expr="." position="inside">
+      <link rel="stylesheet" type="text/css" href="/opt/odoo-custom-addons/l10n_it_simple_withholding_cassa/static/src/css/report_styles.css"/>
+    </xpath>
+  </template>
+</odoo>
+

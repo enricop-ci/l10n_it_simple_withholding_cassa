@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+  <template id="portal_sale_order_inherit" inherit_id="portal.portal_sale_order_page">
+    <xpath expr="//div[@class='o_sale_order_totals']" position="before">
+      <div>
+        <strong>Cassa Previdenziale:</strong>
+        <span t-esc="cassa_amount"/>
+        (<span t-esc="cassa_percent"/>%)
+      </div>
+      <div>
+        <strong>Ritenuta d'acconto:</strong>
+        <span t-esc="withholding_amount"/>
+        (<span t-esc="withholding_percent"/>%)
+      </div>
+      <div>
+        <strong>Totale Lordo:</strong>
+        <span t-esc="total_gross"/>
+      </div>
+    </xpath>
+  </template>
+</odoo>
+

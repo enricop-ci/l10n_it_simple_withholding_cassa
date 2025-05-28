@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <template id="report_saleorder_document_override" inherit_id="sale.report_saleorder_document">
+    <!-- Rimuove la tabella dei totali classica -->
+    <xpath expr="//table[contains(@class, 'o_report_summary')]" position="replace">
+      <table class="no-border-table">
+        <tbody>
+          <tr>
+            <td><strong>Imponibile:</strong></td>
+            <td class="text-end">
+              <span t-esc="doc.amount_untaxed" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Cassa Previdenziale:</strong></td>
+            <td class="text-end">
+              <span t-esc="doc.cassa_amount" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Imponibile + Cassa:</strong></td>
+            <td class="text-end">
+              <span t-esc="doc.amount_untaxed + doc.cassa_amount" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+            </td>
+          </tr>
+          <tr>
+            <td><strong t-field="doc.vat_label"/>:</td>
+            <td class="text-end">
+              <span t-field="doc.amount_tax" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Ritenuta d'acconto:</strong></td>
+            <td class="text-end">
+              <span t-field="doc.withholding_amount" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+            </td>
+          </tr>
+
+          <!-- Riga separatrice -->
+          <tr class="separator-row">
+            <td colspan="2"></td>
+          </tr>
+
+          <tr>
+            <td><strong class="text-danger">Totale Lordo</strong></td>
+            <td class="text-end text-danger">
+              <span t-field="doc.total_gross" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+            </td>
+          </tr>
+          <tr>
+            <td><strong class="text-primary">Netto a Pagare</strong></td>
+            <td class="text-end text-primary">
+              <span t-field="doc.net_amount" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </xpath>
+  </template>
+</odoo>
+

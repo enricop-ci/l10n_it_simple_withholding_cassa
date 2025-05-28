@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<odoo>
+    <record id="view_company_form_withholding_cassa" model="ir.ui.view">
+        <field name="name">res.company.form.withholding.cassa</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="enable_withholding_tax"/>
+                <field name="enable_cassa_previdenziale"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+
