@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Estensione vista portale Fatture -->
+    <template id="portal_invoice_inherit" inherit_id="account.portal_invoice_page" priority="20">
+        <xpath expr="//div[@id='invoice_content']//table[@class='table table-sm']" position="after">
+            <div class="table-responsive mt-3">
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr t-if="invoice.apply_cassa">
+                            <th scope="row">Cassa Previdenziale</th>
+                            <td>
+                                <span t-esc="invoice.cassa_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Totale lordo</th>
+                            <td>
+                                <span t-esc="invoice.total_gross"
+                                      t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr t-if="invoice.apply_withholding">
+                            <th scope="row">Ritenuta d'acconto</th>
+                            <td>
+                                <span t-esc="invoice.withholding_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Netto a pagare</th>
+                            <td>
+                                <span t-esc="invoice.net_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}" />
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </xpath>
+    </template>
+
+    <!-- Estensione vista portale Preventivi -->
+    <template id="portal_sale_inherit" inherit_id="sale.portal_my_quotations" priority="20">
+        <xpath expr="//div[@id='quotation_content']//table[@class='table table-sm']" position="after">
+            <div class="table-responsive mt-3">
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr t-if="sale_order.apply_cassa">
+                            <th scope="row">Cassa Previdenziale</th>
+                            <td>
+                                <span t-esc="sale_order.cassa_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': sale_order.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Totale lordo</th>
+                            <td>
+                                <span t-esc="sale_order.total_gross"
+                                      t-options="{'widget': 'monetary', 'display_currency': sale_order.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr t-if="sale_order.apply_withholding">
+                            <th scope="row">Ritenuta d'acconto</th>
+                            <td>
+                                <span t-esc="sale_order.withholding_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': sale_order.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Netto a pagare</th>
+                            <td>
+                                <span t-esc="sale_order.net_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': sale_order.currency_id}" />
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </xpath>
+    </template>
+</odoo>
