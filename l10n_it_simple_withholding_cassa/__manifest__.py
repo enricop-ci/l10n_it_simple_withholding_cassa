@@ -21,7 +21,7 @@
         'views/sale_order_view.xml',
         'views/report_saleorder_template.xml',
         'views/report_invoice_template.xml',
-        'views/portal_templates.xml',
+        'views/report_invoice_inherit.xml',
         'views/assets.xml',
     ],
     'qweb': [

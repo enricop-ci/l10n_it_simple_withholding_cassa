@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="report_invoice_document_inherit" inherit_id="account.report_invoice_document" priority="20">
+        <xpath expr="//table[contains(@class, 'table_totals')]/tbody" position="inside">
+            <tr t-if="doc.apply_cassa">
+                <td>Cassa Previdenziale</td>
+                <td class="text-right">
+                    <span t-esc="doc.cassa_amount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                </td>
+            </tr>
+            <tr>
+                <td>Totale lordo</td>
+                <td class="text-right">
+                    <span t-esc="doc.total_gross" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                </td>
+            </tr>
+            <tr t-if="doc.apply_withholding">
+                <td>Ritenuta d'acconto</td>
+                <td class="text-right">
+                    <span t-esc="doc.withholding_amount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                </td>
+            </tr>
+            <tr>
+                <td>Netto a pagare</td>
+                <td class="text-right">
+                    <span t-esc="doc.net_amount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
+                </td>
+            </tr>
+        </xpath>
+    </template>
+</odoo>
