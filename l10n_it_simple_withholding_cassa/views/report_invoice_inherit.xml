@@ -1,31 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <template id="report_invoice_document_inherit" inherit_id="account.report_invoice_document" priority="20">
-        <xpath expr="//table[contains(@class, 'table_totals')]/tbody" position="inside">
-            <tr t-if="doc.apply_cassa">
-                <td>Cassa Previdenziale</td>
-                <td class="text-right">
+        <!-- Inserisci sotto al totale finale (Net to Pay) -->
+        <xpath expr="//div[contains(@class, 'row') and .//strong[contains(text(), 'Total')]]" position="after">
+            <div class="row mt-1" t-if="doc.apply_cassa">
+                <div class="col-auto me-auto"><strong>Cassa Previdenziale</strong></div>
+                <div class="col-auto">
                     <span t-esc="doc.cassa_amount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
-                </td>
-            </tr>
-            <tr>
-                <td>Totale lordo</td>
-                <td class="text-right">
+                </div>
+            </div>
+            <div class="row mt-1">
+                <div class="col-auto me-auto"><strong>Totale lordo</strong></div>
+                <div class="col-auto">
                     <span t-esc="doc.total_gross" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
-                </td>
-            </tr>
-            <tr t-if="doc.apply_withholding">
-                <td>Ritenuta d'acconto</td>
-                <td class="text-right">
+                </div>
+            </div>
+            <div class="row mt-1" t-if="doc.apply_withholding">
+                <div class="col-auto me-auto"><strong>Ritenuta d'acconto</strong></div>
+                <div class="col-auto">
                     <span t-esc="doc.withholding_amount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
-                </td>
-            </tr>
-            <tr>
-                <td>Netto a pagare</td>
-                <td class="text-right">
+                </div>
+            </div>
+            <div class="row mt-1">
+                <div class="col-auto me-auto"><strong>Netto a pagare</strong></div>
+                <div class="col-auto">
                     <span t-esc="doc.net_amount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/>
-                </td>
-            </tr>
+                </div>
+            </div>
         </xpath>
     </template>
 </odoo>
