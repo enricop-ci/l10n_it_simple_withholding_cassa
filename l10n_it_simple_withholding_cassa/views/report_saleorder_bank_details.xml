@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <template id="report_saleorder_bank_details" inherit_id="sale.report_saleorder_document">
+        <xpath expr="//div[@class='page']/div[last()]" position="after">
+            <div class="row mt-4" t-if="doc.company_id.bank_ids">
+                <div class="col-12">
+                    <strong>Dettagli Bancari:</strong>
+                    <t t-foreach="doc.company_id.bank_ids" t-as="bank">
+                        <div>
+                            <span t-field="bank.bank_id.name"/> - 
+                            IBAN: <span t-field="bank.acc_number"/>
+                            <t t-if="bank.bank_id.bic">
+                                - BIC/SWIFT: <span t-field="bank.bank_id.bic"/>
+                            </t>
+                        </div>
+                    </t>
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>
