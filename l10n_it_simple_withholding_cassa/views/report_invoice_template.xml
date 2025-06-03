@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <template id="report_invoice_document_custom" inherit_id="account.report_invoice_document">
-
+    <!--
     <xpath expr="//div[@id='right-elements']//table[contains(@class, 'o_total_table')]" position="replace">
       <table class="o_total_table table table-borderless avoid-page-break-inside custom-total-table" style="width: 70%; margin-left:auto; margin-right:0;">
         <tr>
@@ -48,15 +48,15 @@
         .custom-total-table {
           border: none !important;
           border-collapse: collapse !important;
-          width: 90%;  /* Aumentato da 60% a 70% */
+          width: 90%;
           margin-left: auto;
           margin-right: 0;
         }
 
         .custom-total-table td {
           border: none !important;
-          padding: 2px 8px !important;  /* Ridotto il padding da 4px 12px a 2px 8px */
-          line-height: 1.2 !important;  /* Ridotto line-height da default a 1.2 */
+          padding: 2px 8px !important;
+          line-height: 1.2 !important;
         }
 
         .custom-total-table tr {
@@ -64,7 +64,7 @@
         }
       </style>
     </xpath>
-
+    -->
   </template>
 </odoo>
 
