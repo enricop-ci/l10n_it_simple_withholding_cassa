@@ -17,64 +17,61 @@ class AccountMove(models.Model):
 
     @api.onchange('invoice_line_ids', 'apply_withholding', 'withholding_percent', 'apply_cassa', 'cassa_percent')
     def _onchange_withholding_cassa(self):
-        if self.move_type not in ['out_invoice', 'out_refund'] or self.state != 'draft':
-            return
+        try:
+            if self.move_type not in ['out_invoice', 'out_refund'] or self.state != 'draft':
+                return
 
-        original_lines = self.invoice_line_ids.filtered(lambda l: not l.name.startswith('[AUTO]'))
-        self.invoice_line_ids = original_lines
+            original_lines = self.invoice_line_ids.filtered(lambda l: not (l.name and l.name.startswith('[AUTO]')))
+            self.invoice_line_ids = original_lines
 
-        base_total = sum(original_lines.mapped('price_subtotal'))
-        new_lines = original_lines
+            base_total = sum(original_lines.mapped('price_subtotal'))
+            new_lines = original_lines
 
-        # Calculate cassa first
-        cassa_amount = 0
-        if self.apply_cassa and base_total:
-            # Trova l'imposta IVA 22%
-            tax_22 = self.env['account.tax'].search([
-                ('type_tax_use', '=', 'sale'),
-                ('amount', '=', 22),
-            ], limit=1)
-
-            # Trova il conto per cassa previdenziale (ricavo)
-            cassa_account = self.env['account.account'].search([
-                ('code', 'like', '701%'),  # Conto ricavi servizi
-            ], limit=1)
-            if not cassa_account:
+            # Calculate cassa first
+            cassa_amount = 0
+            if self.apply_cassa and base_total:
+                # Usa il conto ricavi di default del journal
                 cassa_account = self.journal_id.default_account_id
-
-            cassa_amount = base_total * self.cassa_percent / 100.0
-            new_lines += self.env['account.move.line'].new({
-                'name': f"[AUTO] Cassa Previdenziale {self.cassa_percent:.1f}%",
-                'price_unit': cassa_amount,
-                'quantity': 1.0,
-                'account_id': cassa_account.id,
-                'tax_ids': [(6, 0, [tax_22.id])] if tax_22 else [],  # Aggiunge IVA 22%
-            })
-
-        # Then calculate withholding including cassa
-        if self.apply_withholding and base_total:
-            # Trova il conto per ritenuta d'acconto (credito verso erario)
-            withholding_account = self.env['account.account'].search([
-                ('code', 'like', '144%'),  # Crediti verso erario per ritenute
-            ], limit=1)
-            if not withholding_account:
-                withholding_account = self.env['account.account'].search([
-                    ('code', 'like', '1440%'),
-                ], limit=1)
-            if not withholding_account:
-                # Fallback su un conto di debito generico
-                withholding_account = self.env['account.account'].search([
-                    ('account_type', '=', 'asset_current'),
+                
+                # Trova l'imposta IVA 22%
+                tax_22 = self.env['account.tax'].search([
+                    ('type_tax_use', '=', 'sale'),
+                    ('amount', '=', 22),
                 ], limit=1)
 
-            withholding_base = base_total + cassa_amount  # Include cassa in withholding base
-            ritenuta_amount = - withholding_base * self.withholding_percent / 100.0
-            new_lines += self.env['account.move.line'].new({
-                'name': f"[AUTO] Ritenuta d'acconto {self.withholding_percent:.1f}%",
-                'price_unit': ritenuta_amount,
-                'quantity': 1.0,
-                'account_id': withholding_account.id,
-            })
+                cassa_amount = base_total * self.cassa_percent / 100.0
+                new_lines += self.env['account.move.line'].new({
+                    'name': f"[AUTO] Cassa Previdenziale {self.cassa_percent:.1f}%",
+                    'price_unit': cassa_amount,
+                    'quantity': 1.0,
+                    'account_id': cassa_account.id,
+                    'tax_ids': [(6, 0, [tax_22.id])] if tax_22 else [],
+                })
+
+            # Then calculate withholding including cassa
+            if self.apply_withholding and base_total:
+                # Usa il conto clienti per la ritenuta (sarà un credito)
+                withholding_account = self.partner_id.property_account_receivable_id
+                if not withholding_account:
+                    withholding_account = self.journal_id.default_account_id
+
+                withholding_base = base_total + cassa_amount
+                ritenuta_amount = - withholding_base * self.withholding_percent / 100.0
+                new_lines += self.env['account.move.line'].new({
+                    'name': f"[AUTO] Ritenuta d'acconto {self.withholding_percent:.1f}%",
+                    'price_unit': ritenuta_amount,
+                    'quantity': 1.0,
+                    'account_id': withholding_account.id,
+                })
+
+            self.invoice_line_ids = new_lines
+            
+        except Exception as e:
+            # Log dell'errore ma non bloccare la fattura
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.error(f"Errore in _onchange_withholding_cassa: {e}")
+            return
 
         self.invoice_line_ids = new_lines
 
