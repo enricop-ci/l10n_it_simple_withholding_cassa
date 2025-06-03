@@ -73,38 +73,27 @@ class SaleOrder(models.Model):
     )
     def _amount_all(self):
         for order in self:
-            amount_untaxed = sum(line.price_subtotal for line in order.order_line)
+            # Separa le righe normali da quelle auto
+            normal_lines = order.order_line.filtered(lambda l: not (l.name and l.name.startswith('[AUTO]')))
+            auto_lines = order.order_line - normal_lines
+            
+            # Calcola imponibile base dalle righe normali
+            amount_untaxed = sum(normal_lines.mapped('price_subtotal'))
 
-            # Calcolo Cassa
-            cassa_amount = 0.0
-            if order.apply_cassa:
-                cassa_amount = float_round(amount_untaxed * order.cassa_percent / 100.0, precision_digits=2)
+            # Trova riga cassa e ritenuta
+            cassa_line = auto_lines.filtered(lambda l: 'Cassa Previdenziale' in (l.name or ''))
+            ritenuta_line = auto_lines.filtered(lambda l: 'Ritenuta' in (l.name or ''))
 
-            # Base imponibile con cassa
-            base_imponibile = amount_untaxed + cassa_amount
+            # Prendi i valori dalle righe
+            cassa_amount = sum(cassa_line.mapped('price_subtotal')) if cassa_line else 0.0
+            withholding_amount = -sum(ritenuta_line.mapped('price_subtotal')) if ritenuta_line else 0.0
 
-            # Calcolo IVA su base con cassa
-            amount_tax = 0.0
-            for line in order.order_line:
-                base_line = line.price_subtotal
-                if order.apply_cassa:
-                    base_line += base_line * order.cassa_percent / 100.0
-                line_taxes = line.tax_id.filtered(lambda t: t.amount_type == 'percent')
-                line_tax_amount = sum(base_line * t.amount / 100.0 for t in line_taxes)
-                amount_tax += line_tax_amount
-            amount_tax = float_round(amount_tax, precision_digits=2)
+            # Calcola IVA totale
+            amount_tax = sum(order.order_line.mapped('price_tax'))
 
-            # Totale lordo (base + IVA)
-            total_gross = base_imponibile + amount_tax
-
-            # Ritenuta d'acconto (calcolata su imponibile + cassa)
-            withholding_amount = 0.0
-            if order.apply_withholding:
-                withholding_base = amount_untaxed + cassa_amount  # Base include la cassa
-                withholding_amount = float_round(withholding_base * order.withholding_percent / 100.0, precision_digits=2)
-
-            # Totale netto
-            total_net = float_round(total_gross - withholding_amount, precision_digits=2)
+            # Calcola totali
+            total_gross = amount_untaxed + cassa_amount + amount_tax
+            total_net = total_gross - withholding_amount
 
             # Assegnazione ai campi
             order.amount_untaxed = amount_untaxed

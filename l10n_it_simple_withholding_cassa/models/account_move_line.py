@@ -57,3 +57,47 @@ class AccountMove(models.Model):
             })
 
         self.invoice_line_ids = new_lines
+
+    @api.depends(
+        'invoice_line_ids.price_subtotal',
+        'invoice_line_ids.tax_ids',
+        'apply_withholding',
+        'withholding_percent',
+        'apply_cassa',
+        'cassa_percent',
+    )
+    def _compute_amount(self):
+        super()._compute_amount()
+        for move in self:
+            if move.move_type not in ['out_invoice', 'out_refund']:
+                continue
+
+            # Separa le righe normali da quelle auto
+            normal_lines = move.invoice_line_ids.filtered(lambda l: not (l.name and l.name.startswith('[AUTO]')))
+            auto_lines = move.invoice_line_ids - normal_lines
+            
+            # Calcola imponibile base dalle righe normali
+            amount_untaxed = sum(normal_lines.mapped('price_subtotal'))
+
+            # Trova riga cassa e ritenuta
+            cassa_line = auto_lines.filtered(lambda l: 'Cassa Previdenziale' in (l.name or ''))
+            ritenuta_line = auto_lines.filtered(lambda l: 'Ritenuta' in (l.name or ''))
+
+            # Prendi i valori dalle righe
+            cassa_amount = sum(cassa_line.mapped('price_subtotal')) if cassa_line else 0.0
+            withholding_amount = -sum(ritenuta_line.mapped('price_subtotal')) if ritenuta_line else 0.0
+
+            # Calcola IVA totale
+            amount_tax = sum(move.invoice_line_ids.mapped('price_tax'))
+
+            # Calcola totali
+            total_gross = amount_untaxed + cassa_amount + amount_tax
+            total_net = total_gross - withholding_amount
+
+            # Assegnazione ai campi
+            move.amount_untaxed = amount_untaxed
+            move.amount_tax = amount_tax
+            move.amount_total = total_gross
+            move.amount_residual = total_net
+            move.cassa_amount = cassa_amount
+            move.withholding_amount = withholding_amount
