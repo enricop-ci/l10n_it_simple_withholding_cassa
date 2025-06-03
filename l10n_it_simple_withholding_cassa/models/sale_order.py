@@ -152,9 +152,9 @@ class SaleOrder(models.Model):
         auto_product = self._get_or_create_auto_product()
         new_lines = original_lines
 
-        # Aggiungi riga Cassa Previdenziale
+        # Calcola prima la cassa
+        cassa_amount = 0
         if self.apply_cassa:
-            # Trova l'imposta IVA 22%
             tax_22 = self.env['account.tax'].search([
                 ('type_tax_use', '=', 'sale'),
                 ('amount', '=', 22),
@@ -164,29 +164,30 @@ class SaleOrder(models.Model):
             cassa_amount = base_total * self.cassa_percent / 100.0
             cassa_line = self.env['sale.order.line'].new({
                 'order_id': self.id,
-                'product_id': auto_product.id,  # IMPORTANTE: Prodotto obbligatorio
-                'product_uom': auto_product.uom_id.id,  # IMPORTANTE: UoM obbligatorio
+                'product_id': auto_product.id,
+                'product_uom': auto_product.uom_id.id,
                 'name': f"[AUTO] Cassa Previdenziale {self.cassa_percent:.1f}%",
                 'price_unit': cassa_amount,
                 'product_uom_qty': 1.0,
                 'tax_id': [(6, 0, [tax_22.id])] if tax_22 else [(6, 0, [])],
-                'sequence': 999,  # Metti alla fine
+                'sequence': 999,
                 'qty_delivered_method': 'manual',
             })
             new_lines += cassa_line
 
-        # Aggiungi riga Ritenuta d'acconto
+        # Poi calcola la ritenuta includendo la cassa
         if self.apply_withholding:
-            ritenuta_amount = -base_total * self.withholding_percent / 100.0
+            withholding_base = base_total + cassa_amount  # Include la cassa nella base
+            ritenuta_amount = -withholding_base * self.withholding_percent / 100.0
             ritenuta_line = self.env['sale.order.line'].new({
                 'order_id': self.id,
-                'product_id': auto_product.id,  # IMPORTANTE: Prodotto obbligatorio
-                'product_uom': auto_product.uom_id.id,  # IMPORTANTE: UoM obbligatorio
+                'product_id': auto_product.id,
+                'product_uom': auto_product.uom_id.id,
                 'name': f"[AUTO] Ritenuta d'acconto {self.withholding_percent:.1f}%",
                 'price_unit': ritenuta_amount,
                 'product_uom_qty': 1.0,
-                'tax_id': [(6, 0, [])],  # Nessuna IVA sulla ritenuta
-                'sequence': 1000,  # Metti per ultimo
+                'tax_id': [(6, 0, [])],
+                'sequence': 1000,
                 'qty_delivered_method': 'manual',
             })
             new_lines += ritenuta_line
@@ -231,7 +232,8 @@ class SaleOrder(models.Model):
         # Ottieni il prodotto per le righe automatiche
         auto_product = self._get_or_create_auto_product()
 
-        # Crea nuove righe automatiche
+        # Calcola prima la cassa
+        cassa_amount = 0
         if self.apply_cassa:
             tax_22 = self.env['account.tax'].search([
                 ('type_tax_use', '=', 'sale'),
@@ -252,8 +254,10 @@ class SaleOrder(models.Model):
                 'qty_delivered_method': 'manual',
             })
 
+        # Poi calcola la ritenuta includendo la cassa
         if self.apply_withholding:
-            ritenuta_amount = -base_total * self.withholding_percent / 100.0
+            withholding_base = base_total + cassa_amount  # Include la cassa nella base
+            ritenuta_amount = -withholding_base * self.withholding_percent / 100.0
             self.env['sale.order.line'].create({
                 'order_id': self.id,
                 'product_id': auto_product.id,
