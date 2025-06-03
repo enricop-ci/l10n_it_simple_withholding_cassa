@@ -27,7 +27,7 @@
         'views/assets.xml',
     ],
     'qweb': [
-        'views/portal_sale_order_templates.xml',
+        'views/portal_sale_order_templates.xml',  # Rimuovi il commento
     ],
     'installable': True,
     'application': False,
