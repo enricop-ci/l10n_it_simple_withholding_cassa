@@ -1,20 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
   <template id="portal_sale_order_inherit" inherit_id="portal.portal_sale_order_page">
+    <!-- Sostituiamo il totale principale -->
+    <xpath expr="//span[@t-field='sale_order.amount_total']" position="attributes">
+      <attribute name="t-field">sale_order.total_gross</attribute>
+    </xpath>
+
+    <!-- Aggiungiamo i nostri totali -->
     <xpath expr="//div[@class='o_sale_order_totals']" position="before">
       <div>
         <strong>Cassa Previdenziale:</strong>
-        <span t-esc="cassa_amount"/>
-        (<span t-esc="cassa_percent"/>%)
+        <span t-field="sale_order.cassa_amount"/>
+        (<span t-field="sale_order.cassa_percent"/>%)
+      </div>
+      <div>
+        <strong>Totale Fattura:</strong>
+        <span t-field="sale_order.amount_total"/>
       </div>
       <div>
         <strong>Ritenuta d'acconto:</strong>
-        <span t-esc="withholding_amount"/>
-        (<span t-esc="withholding_percent"/>%)
+        <span t-field="sale_order.withholding_amount"/>
+        (<span t-field="sale_order.withholding_percent"/>%)
       </div>
       <div>
-        <strong>Totale Lordo:</strong>
-        <span t-esc="total_gross"/>
+        <strong>Netto a Pagare:</strong>
+        <span t-field="sale_order.net_amount"/>
       </div>
     </xpath>
   </template>

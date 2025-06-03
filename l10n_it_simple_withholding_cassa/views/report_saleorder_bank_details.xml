@@ -2,10 +2,10 @@
 <odoo>
     <template id="report_saleorder_bank_details" inherit_id="sale.report_saleorder_document">
         <xpath expr="//div[@class='page']/div[last()]" position="after">
-            <div class="row mt-4" t-if="o.company_id.bank_ids">
+            <div class="row mt-4" t-if="doc.company_id.bank_ids or o.company_id.bank_ids">
                 <div class="col-12">
                     <strong>Dettagli Bancari:</strong>
-                    <t t-foreach="o.company_id.bank_ids" t-as="bank">
+                    <t t-foreach="doc.company_id.bank_ids or o.company_id.bank_ids" t-as="bank">
                         <div>
                             <span t-field="bank.bank_id.name"/> - 
                             IBAN: <span t-field="bank.acc_number"/>
