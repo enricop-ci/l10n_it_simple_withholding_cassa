@@ -87,8 +87,20 @@ class AccountMove(models.Model):
             cassa_amount = sum(cassa_line.mapped('price_subtotal')) if cassa_line else 0.0
             withholding_amount = -sum(ritenuta_line.mapped('price_subtotal')) if ritenuta_line else 0.0
 
-            # Calcola IVA totale
-            amount_tax = sum(move.invoice_line_ids.mapped('price_tax'))
+            # CORREZIONE: Calcola IVA totale usando il metodo corretto
+            # Invece di price_tax (che non esiste), calcola la differenza
+            amount_tax = 0.0
+            for line in move.invoice_line_ids:
+                if line.tax_ids:
+                    # Calcola le tasse per ogni riga
+                    tax_results = line.tax_ids.compute_all(
+                        line.price_unit,
+                        currency=move.currency_id,
+                        quantity=line.quantity,
+                        product=line.product_id,
+                        partner=move.partner_id
+                    )
+                    amount_tax += sum(tax['amount'] for tax in tax_results['taxes'])
 
             # Calcola totali
             total_gross = amount_untaxed + cassa_amount + amount_tax
