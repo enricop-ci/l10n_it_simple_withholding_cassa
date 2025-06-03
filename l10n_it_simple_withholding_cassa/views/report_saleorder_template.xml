@@ -2,7 +2,7 @@
 <odoo>
     <template id="report_saleorder_document_inherit" inherit_id="sale.report_saleorder_document">
         <!-- Aggiungiamo il totale fattura prima del netto a pagare -->
-        <xpath expr="//div[hasclass('row mt-4')]/div[hasclass('col-auto')]//table[contains(@class, 'table-sm')]//tr[last()]" position="before">
+        <xpath expr="//table[hasclass('table-sm')]//tr[last()]" position="before">
             <tr>
                 <td><strong>Totale Documento:</strong></td>
                 <td class="text-end">
