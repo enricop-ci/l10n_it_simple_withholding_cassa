@@ -26,6 +26,8 @@ class AccountMove(models.Model):
         base_total = sum(original_lines.mapped('price_subtotal'))
         new_lines = original_lines
 
+        # Calculate cassa first
+        cassa_amount = 0
         if self.apply_cassa and base_total:
             # Trova l'imposta IVA 22%
             tax_22 = self.env['account.tax'].search([
@@ -43,8 +45,10 @@ class AccountMove(models.Model):
                 'tax_ids': [(6, 0, [tax_22.id])] if tax_22 else [],  # Aggiunge IVA 22%
             })
 
+        # Then calculate withholding including cassa
         if self.apply_withholding and base_total:
-            ritenuta_amount = - base_total * self.withholding_percent / 100.0
+            withholding_base = base_total + cassa_amount  # Include cassa in withholding base
+            ritenuta_amount = - withholding_base * self.withholding_percent / 100.0
             new_lines += self.env['account.move.line'].new({
                 'name': f"[AUTO] Ritenuta d'acconto {self.withholding_percent:.1f}%",
                 'price_unit': ritenuta_amount,

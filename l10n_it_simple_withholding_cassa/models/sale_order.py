@@ -97,10 +97,11 @@ class SaleOrder(models.Model):
             # Totale lordo (base + IVA)
             total_gross = base_imponibile + amount_tax
 
-            # Ritenuta d'acconto
+            # Ritenuta d'acconto (calcolata su imponibile + cassa)
             withholding_amount = 0.0
             if order.apply_withholding:
-                withholding_amount = float_round(base_imponibile * order.withholding_percent / 100.0, precision_digits=2)
+                withholding_base = amount_untaxed + cassa_amount  # Base include la cassa
+                withholding_amount = float_round(withholding_base * order.withholding_percent / 100.0, precision_digits=2)
 
             # Totale netto
             total_net = float_round(total_gross - withholding_amount, precision_digits=2)
@@ -114,18 +115,45 @@ class SaleOrder(models.Model):
             order.amount_total = total_net
             order.net_amount = total_net
 
+    def _get_or_create_auto_product(self):
+        """Trova o crea un prodotto per le righe automatiche"""
+        auto_product = self.env['product.product'].search([
+            ('default_code', '=', 'AUTO_SERVICE')
+        ], limit=1)
+        
+        if not auto_product:
+            auto_product = self.env['product.product'].create({
+                'name': 'Servizio Automatico - Calcoli Fiscali',
+                'default_code': 'AUTO_SERVICE',
+                'type': 'service',
+                'list_price': 0.0,
+                'sale_ok': True,
+                'purchase_ok': False,
+                'taxes_id': [(5, 0, 0)],  # Rimuove tutte le tasse di default
+                'categ_id': self.env.ref('product.product_category_all').id,
+            })
+        
+        return auto_product
+
     @api.onchange('order_line', 'apply_withholding', 'withholding_percent', 'apply_cassa', 'cassa_percent')
     def _onchange_withholding_cassa(self):
         if self.state != 'draft':
             return
 
+        # Rimuovi righe automatiche esistenti
         original_lines = self.order_line.filtered(lambda l: not l.name.startswith('[AUTO]'))
         self.order_line = original_lines
 
         base_total = sum(original_lines.mapped('price_subtotal'))
+        if not base_total:
+            return
+
+        # Ottieni il prodotto per le righe automatiche
+        auto_product = self._get_or_create_auto_product()
         new_lines = original_lines
 
-        if self.apply_cassa and base_total:
+        # Aggiungi riga Cassa Previdenziale
+        if self.apply_cassa:
             # Trova l'imposta IVA 22%
             tax_22 = self.env['account.tax'].search([
                 ('type_tax_use', '=', 'sale'),
@@ -134,25 +162,106 @@ class SaleOrder(models.Model):
             ], limit=1)
 
             cassa_amount = base_total * self.cassa_percent / 100.0
-            new_lines += self.env['sale.order.line'].new({
+            cassa_line = self.env['sale.order.line'].new({
                 'order_id': self.id,
+                'product_id': auto_product.id,  # IMPORTANTE: Prodotto obbligatorio
+                'product_uom': auto_product.uom_id.id,  # IMPORTANTE: UoM obbligatorio
                 'name': f"[AUTO] Cassa Previdenziale {self.cassa_percent:.1f}%",
                 'price_unit': cassa_amount,
                 'product_uom_qty': 1.0,
-                'tax_id': [(6, 0, [tax_22.id])] if tax_22 else [],  # Aggiunge IVA 22%
-                'account_id': self.journal_id.default_account_id.id if hasattr(self, 'journal_id') else False,
+                'tax_id': [(6, 0, [tax_22.id])] if tax_22 else [(6, 0, [])],
+                'sequence': 999,  # Metti alla fine
+                'qty_delivered_method': 'manual',
             })
+            new_lines += cassa_line
 
-        if self.apply_withholding and base_total:
-            ritenuta_amount = - base_total * self.withholding_percent / 100.0
-            new_lines += self.env['sale.order.line'].new({
+        # Aggiungi riga Ritenuta d'acconto
+        if self.apply_withholding:
+            ritenuta_amount = -base_total * self.withholding_percent / 100.0
+            ritenuta_line = self.env['sale.order.line'].new({
                 'order_id': self.id,
+                'product_id': auto_product.id,  # IMPORTANTE: Prodotto obbligatorio
+                'product_uom': auto_product.uom_id.id,  # IMPORTANTE: UoM obbligatorio
                 'name': f"[AUTO] Ritenuta d'acconto {self.withholding_percent:.1f}%",
                 'price_unit': ritenuta_amount,
                 'product_uom_qty': 1.0,
-                'tax_id': [],  # Nessuna IVA sulla ritenuta
-                'account_id': self.journal_id.default_account_id.id if hasattr(self, 'journal_id') else False,
+                'tax_id': [(6, 0, [])],  # Nessuna IVA sulla ritenuta
+                'sequence': 1000,  # Metti per ultimo
+                'qty_delivered_method': 'manual',
             })
+            new_lines += ritenuta_line
 
         self.order_line = new_lines
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Override create per gestire le righe automatiche al salvataggio - supporta batch creation"""
+        orders = super().create(vals_list)
+        
+        # Processa ogni ordine creato
+        for order in orders.filtered(lambda o: o.state == 'draft'):
+            order._sync_auto_lines()
+            
+        return orders
+
+    def write(self, vals):
+        """Override write per gestire le righe automatiche al salvataggio"""
+        result = super().write(vals)
+        if any(key in vals for key in ['apply_withholding', 'withholding_percent', 'apply_cassa', 'cassa_percent', 'order_line']):
+            for order in self.filtered(lambda o: o.state == 'draft'):
+                order._sync_auto_lines()
+        return result
+
+    def _sync_auto_lines(self):
+        """Sincronizza le righe automatiche (chiamata al salvataggio)"""
+        if self.state != 'draft':
+            return
+
+        # Rimuovi righe automatiche esistenti
+        auto_lines = self.order_line.filtered(lambda l: l.name and l.name.startswith('[AUTO]'))
+        auto_lines.unlink()
+
+        # Calcola base per righe normali
+        normal_lines = self.order_line.filtered(lambda l: not (l.name and l.name.startswith('[AUTO]')))
+        base_total = sum(normal_lines.mapped('price_subtotal'))
+        
+        if not base_total:
+            return
+
+        # Ottieni il prodotto per le righe automatiche
+        auto_product = self._get_or_create_auto_product()
+
+        # Crea nuove righe automatiche
+        if self.apply_cassa:
+            tax_22 = self.env['account.tax'].search([
+                ('type_tax_use', '=', 'sale'),
+                ('amount', '=', 22),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+
+            cassa_amount = base_total * self.cassa_percent / 100.0
+            self.env['sale.order.line'].create({
+                'order_id': self.id,
+                'product_id': auto_product.id,
+                'product_uom': auto_product.uom_id.id,
+                'name': f"[AUTO] Cassa Previdenziale {self.cassa_percent:.1f}%",
+                'price_unit': cassa_amount,
+                'product_uom_qty': 1.0,
+                'tax_id': [(6, 0, [tax_22.id])] if tax_22 else [(6, 0, [])],
+                'sequence': 999,
+                'qty_delivered_method': 'manual',
+            })
+
+        if self.apply_withholding:
+            ritenuta_amount = -base_total * self.withholding_percent / 100.0
+            self.env['sale.order.line'].create({
+                'order_id': self.id,
+                'product_id': auto_product.id,
+                'product_uom': auto_product.uom_id.id,
+                'name': f"[AUTO] Ritenuta d'acconto {self.withholding_percent:.1f}%",
+                'price_unit': ritenuta_amount,
+                'product_uom_qty': 1.0,
+                'tax_id': [(6, 0, [])],
+                'sequence': 1000,
+                'qty_delivered_method': 'manual',
+            })
