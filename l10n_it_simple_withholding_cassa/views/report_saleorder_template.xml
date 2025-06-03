@@ -5,29 +5,35 @@
     <xpath expr="." position="inside">
       <style>
         /* Applichiamo uno stile personalizzato solo alla tabella dei totali */
-          .custom-total-table {
-            border: none !important;
-            border-collapse: collapse !important;
-            width: 60%;
-            margin-left: auto;
-            margin-right: 0;
-          }
+        .custom-total-table {
+          border: none !important;
+          border-collapse: collapse !important;
+          width: 60%;
+          margin-left: auto;
+          margin-right: 0;
+        }
 
-          .custom-total-table td {
-            border: none !important;
-            border-style: none !important;
-            padding: 4px 12px !important;
-          }
+        .custom-total-table td {
+          border: none !important;
+          border-style: none !important;
+          padding: 2px 8px !important;  /* Ridotto padding */
+          line-height: 1.2 !important;  /* Ridotto line-height */
+        }
 
-          /* Riga separatrice prima del Totale Lordo e Netto */
-          .separator-row td {
-            border-top: 1px solid black !important;
-          }
+        /* Riga separatrice prima del Totale Lordo e Netto */
+        .separator-row td {
+          border-top: 1px solid black !important;
+          padding: 2px 0 !important;    /* Ridotto padding separatore */
+        }
+
+        .table tr {
+          margin: 0 !important;
+        }
       </style>
     </xpath>
 
     <xpath expr="//table[contains(@class, 'o_total_table')]" position="replace">
-      <table class="table o_total_table table-borderless">
+      <table class="table o_total_table table-borderless custom-total-table">
         <tr>
           <td><strong>Cassa Previdenziale:</strong></td>
           <td class="text-end">

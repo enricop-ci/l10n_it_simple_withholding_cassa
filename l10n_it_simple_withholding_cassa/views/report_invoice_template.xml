@@ -55,7 +55,12 @@
 
         .custom-total-table td {
           border: none !important;
-          padding: 4px 12px !important;
+          padding: 2px 8px !important;  /* Ridotto il padding da 4px 12px a 2px 8px */
+          line-height: 1.2 !important;  /* Ridotto line-height da default a 1.2 */
+        }
+
+        .custom-total-table tr {
+          margin: 0 !important;
         }
       </style>
     </xpath>
