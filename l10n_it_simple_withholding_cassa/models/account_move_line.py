@@ -33,13 +33,11 @@ class AccountMove(models.Model):
             tax_22 = self.env['account.tax'].search([
                 ('type_tax_use', '=', 'sale'),
                 ('amount', '=', 22),
-                ('company_id', '=', self.company_id.id)
             ], limit=1)
 
             # Trova il conto per cassa previdenziale (ricavo)
             cassa_account = self.env['account.account'].search([
                 ('code', 'like', '701%'),  # Conto ricavi servizi
-                ('company_id', '=', self.company_id.id)
             ], limit=1)
             if not cassa_account:
                 cassa_account = self.journal_id.default_account_id
@@ -58,18 +56,15 @@ class AccountMove(models.Model):
             # Trova il conto per ritenuta d'acconto (credito verso erario)
             withholding_account = self.env['account.account'].search([
                 ('code', 'like', '144%'),  # Crediti verso erario per ritenute
-                ('company_id', '=', self.company_id.id)
             ], limit=1)
             if not withholding_account:
                 withholding_account = self.env['account.account'].search([
                     ('code', 'like', '1440%'),
-                    ('company_id', '=', self.company_id.id)
                 ], limit=1)
             if not withholding_account:
                 # Fallback su un conto di debito generico
                 withholding_account = self.env['account.account'].search([
                     ('account_type', '=', 'asset_current'),
-                    ('company_id', '=', self.company_id.id)
                 ], limit=1)
 
             withholding_base = base_total + cassa_amount  # Include cassa in withholding base
