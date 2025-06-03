@@ -114,3 +114,45 @@ class SaleOrder(models.Model):
             order.amount_total = total_net
             order.net_amount = total_net
 
+    @api.onchange('order_line', 'apply_withholding', 'withholding_percent', 'apply_cassa', 'cassa_percent')
+    def _onchange_withholding_cassa(self):
+        if self.state != 'draft':
+            return
+
+        original_lines = self.order_line.filtered(lambda l: not l.name.startswith('[AUTO]'))
+        self.order_line = original_lines
+
+        base_total = sum(original_lines.mapped('price_subtotal'))
+        new_lines = original_lines
+
+        if self.apply_cassa and base_total:
+            # Trova l'imposta IVA 22%
+            tax_22 = self.env['account.tax'].search([
+                ('type_tax_use', '=', 'sale'),
+                ('amount', '=', 22),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+
+            cassa_amount = base_total * self.cassa_percent / 100.0
+            new_lines += self.env['sale.order.line'].new({
+                'order_id': self.id,
+                'name': f"[AUTO] Cassa Previdenziale {self.cassa_percent:.1f}%",
+                'price_unit': cassa_amount,
+                'product_uom_qty': 1.0,
+                'tax_id': [(6, 0, [tax_22.id])] if tax_22 else [],  # Aggiunge IVA 22%
+                'account_id': self.journal_id.default_account_id.id if hasattr(self, 'journal_id') else False,
+            })
+
+        if self.apply_withholding and base_total:
+            ritenuta_amount = - base_total * self.withholding_percent / 100.0
+            new_lines += self.env['sale.order.line'].new({
+                'order_id': self.id,
+                'name': f"[AUTO] Ritenuta d'acconto {self.withholding_percent:.1f}%",
+                'price_unit': ritenuta_amount,
+                'product_uom_qty': 1.0,
+                'tax_id': [],  # Nessuna IVA sulla ritenuta
+                'account_id': self.journal_id.default_account_id.id if hasattr(self, 'journal_id') else False,
+            })
+
+        self.order_line = new_lines
+

@@ -2,65 +2,22 @@
 <odoo>
   <template id="report_invoice_document_custom" inherit_id="account.report_invoice_document">
 
-    <xpath expr="//div[@id='right-elements']//table[contains(@class, 'o_total_table')]" position="replace">
-      <table class="o_total_table table table-borderless avoid-page-break-inside custom-total-table" style="width: 70%; margin-left:auto; margin-right:0;">
-        <tr>
-          <td><strong>Cassa Previdenziale:</strong></td>
-          <td class="text-end">
-            <span t-field="o.cassa_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-          </td>
-        </tr>
-        <tr>
-          <td><strong>Imponibile (inclusa cassa):</strong></td>
-          <td class="text-end">
-            <span t-esc="o.amount_untaxed + o.cassa_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-          </td>
-        </tr>
-        <tr>
-          <td><strong>IVA:</strong></td>
-          <td class="text-end">
-            <span t-field="o.amount_tax" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-          </td>
-        </tr>
-        <tr>
-          <td><strong>Ritenuta d'acconto:</strong></td>
-          <td class="text-end">
-            <span t-field="o.withholding_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-          </td>
-        </tr>
-        <tr style="border-top: 1px solid black;">
-          <td><strong>Totale Lordo:</strong></td>
-          <td class="text-end">
-            <span t-field="o.total_gross" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-          </td>
-        </tr>
-        <tr>
-          <td><strong>Netto a Pagare:</strong></td>
-          <td class="text-end text-warning fw-bold">
-            <span t-field="o.net_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-          </td>
-        </tr>
-      </table>
+    <!-- Aggiungiamo il totale fattura prima del netto a pagare -->
+    <xpath expr="//div[@id='right-elements']//table[contains(@class, 'o_total_table')]//tr[last()]" position="before">
+      <tr>
+        <td><strong>Totale Fattura:</strong></td>
+        <td class="text-end">
+          <span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+        </td>
+      </tr>
     </xpath>
 
+    <!-- Aggiungiamo gli stili minimi necessari -->
     <xpath expr="." position="inside">
       <style>
-        .custom-total-table {
-          border: none !important;
-          border-collapse: collapse !important;
-          width: 90%;  /* Aumentato da 60% a 70% */
-          margin-left: auto;
-          margin-right: 0;
-        }
-
-        .custom-total-table td {
-          border: none !important;
-          padding: 2px 8px !important;  /* Ridotto il padding da 4px 12px a 2px 8px */
-          line-height: 1.2 !important;  /* Ridotto line-height da default a 1.2 */
-        }
-
-        .custom-total-table tr {
-          margin: 0 !important;
+        .o_total_table td {
+          padding: 2px 8px !important;
+          line-height: 1.2 !important;
         }
       </style>
     </xpath>

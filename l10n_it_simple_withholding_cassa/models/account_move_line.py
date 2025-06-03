@@ -27,12 +27,20 @@ class AccountMove(models.Model):
         new_lines = original_lines
 
         if self.apply_cassa and base_total:
+            # Trova l'imposta IVA 22%
+            tax_22 = self.env['account.tax'].search([
+                ('type_tax_use', '=', 'sale'),
+                ('amount', '=', 22),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+
             cassa_amount = base_total * self.cassa_percent / 100.0
             new_lines += self.env['account.move.line'].new({
                 'name': f"[AUTO] Cassa Previdenziale {self.cassa_percent:.1f}%",
                 'price_unit': cassa_amount,
                 'quantity': 1.0,
                 'account_id': self.journal_id.default_account_id.id,
+                'tax_ids': [(6, 0, [tax_22.id])] if tax_22 else [],  # Aggiunge IVA 22%
             })
 
         if self.apply_withholding and base_total:
