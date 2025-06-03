@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <template id="report_saleorder_document_inherit" inherit_id="sale.report_saleorder_document">
-        <!-- Soluzione 1: Aggiungiamo dopo il subtotale usando un XPath più specifico -->
-        <xpath expr="//table[@name='invoice_line_table']//tr[@class='border-black o_subtotal']" position="after">
+        <!-- Aggiungiamo il totale documento prima dell'ultima riga -->
+        <xpath expr="//table[contains(@class, 'o_total_table')]//tr[last()]" position="before">
             <tr>
                 <td><strong>Totale Documento:</strong></td>
                 <td class="text-end">
@@ -10,40 +10,13 @@
                 </td>
             </tr>
         </xpath>
-
-        <!-- Soluzione alternativa: Se la prima non funziona, usa questa -->
-        <!-- 
-        <xpath expr="//div[@id='total']//table//tr[td[contains(text(), 'Total')]]" position="before">
-            <tr>
-                <td><strong>Totale Documento:</strong></td>
-                <td class="text-end">
-                    <span t-field="doc.amount_total" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                </td>
-            </tr>
-        </xpath>
-        -->
-
-        <!-- Altra alternativa: Cerca per il totale esistente -->
-        <!--
-        <xpath expr="//span[@t-field='doc.amount_total']/.." position="before">
-            <tr>
-                <td><strong>Totale Documento:</strong></td>
-                <td class="text-end">
-                    <span t-field="doc.amount_total" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                </td>
-            </tr>
-        </xpath>
-        -->
 
         <!-- Stili CSS -->
         <xpath expr="." position="inside">
             <style>
-                .table td {
+                .o_total_table td {
                     padding: 2px 8px !important;
                     line-height: 1.2 !important;
-                }
-                .o_subtotal td {
-                    border-top: 1px solid #000 !important;
                 }
             </style>
         </xpath>
