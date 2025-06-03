@@ -1,19 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <template id="report_invoice_bank_details" inherit_id="account.report_invoice_document">
-        <xpath expr="//div[hasclass('page')]//div[last()]" position="after">
-            <div class="row mt-4" t-if="o.company_id.bank_ids">
+        <!-- Cambiato xpath per inserire dopo la tabella dei totali custom -->
+        <xpath expr="//table[contains(@class, 'custom-total-table')]" position="after">
+            <div class="row mt-4" style="width: 60%; margin-left:auto; margin-right:0;">
                 <div class="col-12">
-                    <strong>Dettagli Bancari:</strong>
-                    <t t-foreach="o.company_id.bank_ids" t-as="bank">
-                        <div>
-                            <span t-field="bank.bank_id.name"/> - 
-                            IBAN: <span t-field="bank.acc_number"/>
-                            <t t-if="bank.bank_id.bic">
-                                - BIC/SWIFT: <span t-field="bank.bank_id.bic"/>
-                            </t>
+                    <div class="border-top pt-3">
+                        <strong>Pagamento tramite bonifico bancario</strong>
+                        <div class="mt-2">
+                            <strong>Beneficiario:</strong> <span t-field="o.company_id.name"/>
                         </div>
-                    </t>
+                        <t t-foreach="o.company_id.bank_ids" t-as="bank">
+                            <div class="mt-1">
+                                <div><strong>Banca:</strong> <span t-field="bank.bank_id.name"/></div>
+                                <div><strong>IBAN:</strong> <span t-field="bank.acc_number"/></div>
+                                <t t-if="bank.bank_id.bic">
+                                    <div><strong>BIC/SWIFT:</strong> <span t-field="bank.bank_id.bic"/></div>
+                                </t>
+                            </div>
+                        </t>
+                    </div>
                 </div>
             </div>
         </xpath>
