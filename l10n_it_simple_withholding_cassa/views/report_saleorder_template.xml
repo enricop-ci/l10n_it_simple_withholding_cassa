@@ -2,7 +2,7 @@
 <odoo>
     <template id="report_saleorder_document_inherit" inherit_id="sale.report_saleorder_document">
         <!-- Aggiungiamo il totale documento prima del netto a pagare -->
-        <xpath expr="//div[@id='right-elements']//table[contains(@class, 'o_total_table')]//tr[last()]" position="before">
+        <xpath expr="//div[hasclass('clearfix')]//table//tr[last()]" position="before">
             <tr>
                 <td><strong>Totale Documento:</strong></td>
                 <td class="text-end">
@@ -14,7 +14,7 @@
         <!-- Aggiungiamo solo gli stili essenziali -->
         <xpath expr="." position="inside">
             <style>
-                .o_total_table td {
+                .clearfix table td {
                     padding: 2px 8px !important;
                     line-height: 1.2 !important;
                 }
