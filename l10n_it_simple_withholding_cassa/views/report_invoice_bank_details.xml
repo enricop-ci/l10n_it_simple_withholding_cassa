@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <template id="report_invoice_bank_details" inherit_id="account.report_invoice_document">
-        <!-- Cambiato xpath per inserire dopo la tabella dei totali custom -->
         <xpath expr="//table[contains(@class, 'custom-total-table')]" position="after">
             <div class="row mt-4" style="width: 60%; margin-left:auto; margin-right:0;">
                 <div class="col-12">
