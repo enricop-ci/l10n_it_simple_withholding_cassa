@@ -50,10 +50,9 @@ class AccountMove(models.Model):
 
             # Then calculate withholding including cassa
             if self.apply_withholding and base_total:
-                # Usa il conto clienti per la ritenuta (sarà un credito)
-                withholding_account = self.partner_id.property_account_receivable_id
-                if not withholding_account:
-                    withholding_account = self.journal_id.default_account_id
+                # Per la ritenuta, usa un conto di ricavo negativo per bilanciare
+                # Questo creerà un credito che bilancia l'importo dovuto al cliente
+                withholding_account = self.journal_id.default_account_id
 
                 withholding_base = base_total + cassa_amount
                 ritenuta_amount = - withholding_base * self.withholding_percent / 100.0
