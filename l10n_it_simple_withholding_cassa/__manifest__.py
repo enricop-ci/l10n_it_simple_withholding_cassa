@@ -23,7 +23,7 @@
         #'views/report_invoice_template.xml',
         #'views/report_invoice_inherit.xml',
         'views/report_invoice_bank_details.xml',    # nuovo
-        'views/report_saleorder_bank_details.xml',  # nuovo
+        #'views/report_saleorder_bank_details.xml',  # nuovo
         'views/assets.xml',
     ],
     'qweb': [
