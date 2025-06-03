@@ -1,32 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
     <template id="report_invoice_document_inherit" inherit_id="account.report_invoice_document" priority="20">
-        <!-- Inserisci sotto al totale finale (Net to Pay) -->
+        <!-- Rimuoviamo questo xpath che aggiunge i totali duplicati -->
+        <!--
         <xpath expr="//div[contains(@class, 'row') and .//strong[contains(text(), 'Total')]]" position="after">
-            <div class="row mt-1" t-if="o.apply_cassa">
-                <div class="col-auto me-auto"><strong>Cassa Previdenziale</strong></div>
-                <div class="col-auto">
-                    <span t-esc="o.cassa_amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
-                </div>
-            </div>
-            <div class="row mt-1">
-                <div class="col-auto me-auto"><strong>Totale lordo</strong></div>
-                <div class="col-auto">
-                    <span t-esc="o.total_gross" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
-                </div>
-            </div>
-            <div class="row mt-1" t-if="o.apply_withholding">
-                <div class="col-auto me-auto"><strong>Ritenuta d'acconto</strong></div>
-                <div class="col-auto">
-                    <span t-esc="o.withholding_amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
-                </div>
-            </div>
-            <div class="row mt-1">
-                <div class="col-auto me-auto"><strong>Netto a pagare</strong></div>
-                <div class="col-auto">
-                    <span t-esc="o.net_amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
-                </div>
-            </div>
+            <div class="row mt-1" t-if="o.apply_cassa">...</div>
+            <div class="row mt-1">...</div>
+            <div class="row mt-1" t-if="o.apply_withholding">...</div>
+            <div class="row mt-1">...</div>
         </xpath>
+        -->
     </template>
 </odoo>
