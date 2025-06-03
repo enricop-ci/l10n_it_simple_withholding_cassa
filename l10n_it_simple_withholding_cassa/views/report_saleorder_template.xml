@@ -1,22 +1,82 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <template id="report_saleorder_document_inherit" inherit_id="sale.report_saleorder_document">
-        <!-- Aggiungiamo il totale documento prima dell'ultima riga -->
-        <xpath expr="//table[contains(@class, 'o_total_table')]//tr[last()]" position="before">
-            <tr>
-                <td><strong>Totale Documento:</strong></td>
-                <td class="text-end">
-                    <span t-field="doc.amount_total" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                </td>
-            </tr>
+        <!-- Sostituiamo completamente la tabella dei totali -->
+        <xpath expr="//table[contains(@class, 'o_total_table')]" position="replace">
+            <table class="table o_total_table table-borderless custom-total-table">
+                <tr>
+                    <td><strong>Cassa Previdenziale:</strong></td>
+                    <td class="text-end">
+                        <span t-field="doc.cassa_amount" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Imponibile (inclusa cassa):</strong></td>
+                    <td class="text-end">
+                        <span t-esc="doc.amount_untaxed + doc.cassa_amount" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>IVA 22%:</strong></td>
+                    <td class="text-end">
+                        <span t-field="doc.amount_tax" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Ritenuta d'acconto:</strong></td>
+                    <td class="text-end">
+                        <span t-field="doc.withholding_amount" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+                <!-- NUOVA RIGA: Totale Documento -->
+                <tr>
+                    <td><strong>Totale Documento:</strong></td>
+                    <td class="text-end">
+                        <span t-field="doc.amount_total" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+                <tr class="separator-row">
+                    <td colspan="2"></td>
+                </tr>
+                <tr>
+                    <td><strong>Totale Lordo:</strong></td>
+                    <td class="text-end">
+                        <span t-field="doc.total_gross" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Netto a Pagare:</strong></td>
+                    <td class="text-end text-warning fw-bold">
+                        <span t-field="doc.net_amount" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+            </table>
         </xpath>
 
         <!-- Stili CSS -->
         <xpath expr="." position="inside">
             <style>
-                .o_total_table td {
-                    padding: 2px 8px !important;
-                    line-height: 1.2 !important;
+                /* Applichiamo uno stile personalizzato solo alla tabella dei totali */
+                .custom-total-table {
+                    border: none !important;
+                    border-collapse: collapse !important;
+                    width: 60%;
+                    margin-left: auto;
+                    margin-right: 0;
+                }
+                .custom-total-table td {
+                    border: none !important;
+                    border-style: none !important;
+                    padding: 2px 8px !important;  /* Ridotto padding */
+                    line-height: 1.2 !important;  /* Ridotto line-height */
+                }
+                /* Riga separatrice prima del Totale Lordo e Netto */
+                .separator-row td {
+                    border-top: 1px solid black !important;
+                    padding: 2px 0 !important;    /* Ridotto padding separatore */
+                }
+                .table tr {
+                    margin: 0 !important;
                 }
             </style>
         </xpath>
