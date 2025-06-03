@@ -1,25 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-  <template id="report_saleorder_document_inherit" inherit_id="sale.report_saleorder_document">
+    <template id="report_saleorder_document_inherit" inherit_id="sale.report_saleorder_document">
+        <!-- Aggiungiamo il totale fattura prima del netto a pagare -->
+        <xpath expr="//div[hasclass('row mt-4')]/div[hasclass('col-auto')]//table[contains(@class, 'table-sm')]//tr[last()]" position="before">
+            <tr>
+                <td><strong>Totale Documento:</strong></td>
+                <td class="text-end">
+                    <span t-field="doc.amount_total" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                </td>
+            </tr>
+        </xpath>
 
-    <!-- Aggiungiamo il totale fattura prima del netto a pagare -->
-    <xpath expr="//table[contains(@class, 'o_total_table')]//tr[last()]" position="before">
-      <tr>
-        <td><strong>Totale Documento:</strong></td>
-        <td class="text-end">
-          <span t-field="doc.amount_total" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-        </td>
-      </tr>
-    </xpath>
-
-    <!-- Aggiungiamo solo gli stili essenziali -->
-    <xpath expr="." position="inside">
-      <style>
-        .o_total_table td {
-          padding: 2px 8px !important;
-          line-height: 1.2 !important;
-        }
-      </style>
-    </xpath>
-  </template>
+        <!-- Aggiungiamo solo gli stili essenziali -->
+        <xpath expr="." position="inside">
+            <style>
+                .table-sm td {
+                    padding: 2px 8px !important;
+                    line-height: 1.2 !important;
+                }
+            </style>
+        </xpath>
+    </template>
 </odoo>
