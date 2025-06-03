@@ -5,15 +5,9 @@
         <xpath expr="//table[contains(@class, 'o_total_table')]" position="replace">
             <table class="table o_total_table table-borderless custom-total-table">
                 <tr>
-                    <td><strong>Imponibile:</strong></td>
+                    <td><strong>Imponibile (con cassa):</strong></td>
                     <td class="text-end">
-                        <span t-field="doc.amount_untaxed" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                    </td>
-                </tr>
-                <tr t-if="doc.apply_cassa">
-                    <td><strong>Cassa Previdenziale:</strong></td>
-                    <td class="text-end">
-                        <span t-field="doc.cassa_amount" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                        <span t-esc="doc.amount_untaxed + doc.cassa_amount" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                     </td>
                 </tr>
                 <tr>
@@ -26,12 +20,6 @@
                     <td><strong>Totale Documento:</strong></td>
                     <td class="text-end">
                         <span t-field="doc.total_gross" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
-                    </td>
-                </tr>
-                <tr t-if="doc.apply_withholding">
-                    <td><strong>Ritenuta d'acconto:</strong></td>
-                    <td class="text-end">
-                        <span t-field="doc.withholding_amount" t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
                     </td>
                 </tr>
                 <tr class="border-black">
