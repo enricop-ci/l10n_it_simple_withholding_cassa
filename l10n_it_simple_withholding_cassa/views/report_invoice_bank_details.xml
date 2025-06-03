@@ -2,7 +2,7 @@
 <odoo>
     <template id="report_invoice_bank_details" inherit_id="account.report_invoice_document">
         <xpath expr="//table[contains(@class, 'custom-total-table')]" position="after">
-            <div class="row mt-4" style="width: 60%; margin-left:auto; margin-right:0;">
+            <div class="row mt-4" style="width: 90%; margin-left:auto; margin-right:0;">
                 <div class="col-12">
                     <div class="border-top pt-3">
                         <strong>Pagamento tramite bonifico bancario</strong>
