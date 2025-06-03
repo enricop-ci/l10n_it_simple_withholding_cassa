@@ -30,8 +30,14 @@ class AccountMove(models.Model):
             # Calculate cassa first
             cassa_amount = 0
             if self.apply_cassa and base_total:
-                # Usa il conto ricavi di default del journal
-                cassa_account = self.journal_id.default_account_id
+                # Usa il conto 310200 per la cassa previdenziale
+                cassa_account = self.env['account.account'].search([
+                    ('code', '=', '310200')
+                ], limit=1)
+                
+                if not cassa_account:
+                    # Se non trova il conto, usa quello di default del journal
+                    cassa_account = self.journal_id.default_account_id
                 
                 # Trova l'imposta IVA 22%
                 tax_22 = self.env['account.tax'].search([
@@ -50,9 +56,14 @@ class AccountMove(models.Model):
 
             # Then calculate withholding including cassa
             if self.apply_withholding and base_total:
-                # Per la ritenuta, usa un conto di ricavo negativo per bilanciare
-                # Questo creerà un credito che bilancia l'importo dovuto al cliente
-                withholding_account = self.journal_id.default_account_id
+                # Usa il conto 160900 per la ritenuta d'acconto
+                withholding_account = self.env['account.account'].search([
+                    ('code', '=', '160900')
+                ], limit=1)
+                
+                if not withholding_account:
+                    # Se non trova il conto, usa quello di default del journal
+                    withholding_account = self.journal_id.default_account_id
 
                 withholding_base = base_total + cassa_amount
                 ritenuta_amount = - withholding_base * self.withholding_percent / 100.0

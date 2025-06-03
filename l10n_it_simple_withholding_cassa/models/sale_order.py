@@ -104,84 +104,122 @@ class SaleOrder(models.Model):
             order.amount_total = total_net
             order.net_amount = total_net
 
-    def _get_or_create_auto_product(self):
-        """Trova o crea un prodotto per le righe automatiche"""
+    def _get_or_create_auto_product(self, product_type='cassa'):
+        """Trova o crea un prodotto per le righe automatiche con conto specifico"""
+        if product_type == 'cassa':
+            code = 'AUTO_CASSA'
+            name = 'Servizio Automatico - Cassa Previdenziale'
+            account_code = '310200'
+        else:  # ritenuta
+            code = 'AUTO_RITENUTA'
+            name = 'Servizio Automatico - Ritenuta d\'acconto'
+            account_code = '160900'
+            
         auto_product = self.env['product.product'].search([
-            ('default_code', '=', 'AUTO_SERVICE')
+            ('default_code', '=', code)
         ], limit=1)
         
         if not auto_product:
+            # Cerca il conto contabile specifico
+            account = self.env['account.account'].search([
+                ('code', '=', account_code)
+            ], limit=1)
+            
+            # Usa il conto specifico se trovato, altrimenti None (userà quello di default)
+            account_id = account.id if account else False
+            
             auto_product = self.env['product.product'].create({
-                'name': 'Servizio Automatico - Calcoli Fiscali',
-                'default_code': 'AUTO_SERVICE',
+                'name': name,
+                'default_code': code,
                 'type': 'service',
                 'list_price': 0.0,
                 'sale_ok': True,
                 'purchase_ok': False,
                 'taxes_id': [(5, 0, 0)],  # Rimuove tutte le tasse di default
                 'categ_id': self.env.ref('product.product_category_all').id,
+                'property_account_income_id': account_id,  # Imposta il conto ricavi
             })
         
         return auto_product
 
     @api.onchange('order_line', 'apply_withholding', 'withholding_percent', 'apply_cassa', 'cassa_percent')
     def _onchange_withholding_cassa(self):
-        if self.state != 'draft':
-            return
+        _logger.info("=== ONCHANGE TRIGGERATO ===")
+        try:
+            _logger.info(f"State: {self.state}, Apply Cassa: {self.apply_cassa}, Apply Withholding: {self.apply_withholding}")
+            
+            if self.state and self.state != 'draft':
+                _logger.info("Non in draft, esco")
+                return
 
-        # Rimuovi righe automatiche esistenti
-        original_lines = self.order_line.filtered(lambda l: not l.name.startswith('[AUTO]'))
-        self.order_line = original_lines
+            # Rimuovi righe automatiche esistenti
+            original_lines = self.order_line.filtered(lambda l: not (l.name and l.name.startswith('[AUTO]')))
+            auto_lines = self.order_line.filtered(lambda l: l.name and l.name.startswith('[AUTO]'))
+            
+            _logger.info(f"Righe originali: {len(original_lines)}, Righe auto: {len(auto_lines)}")
+            
+            self.order_line = original_lines
 
-        base_total = sum(original_lines.mapped('price_subtotal'))
-        if not base_total:
-            return
+            base_total = sum(original_lines.mapped('price_subtotal'))
+            _logger.info(f"Base total: {base_total}")
+            
+            if not base_total:
+                _logger.info("Base total è zero, esco")
+                return
 
-        # Ottieni il prodotto per le righe automatiche
-        auto_product = self._get_or_create_auto_product()
-        new_lines = original_lines
+            new_lines = original_lines
 
-        # Calcola prima la cassa
-        cassa_amount = 0
-        if self.apply_cassa:
-            tax_22 = self.env['account.tax'].search([
-                ('type_tax_use', '=', 'sale'),
-                ('amount', '=', 22),
-                ('company_id', '=', self.company_id.id)
-            ], limit=1)
+            # Calcola prima la cassa
+            cassa_amount = 0
+            if self.apply_cassa:
+                _logger.info("Calcolo cassa...")
+                tax_22 = self.env['account.tax'].search([
+                    ('type_tax_use', '=', 'sale'),
+                    ('amount', '=', 22),
+                ], limit=1)
 
-            cassa_amount = base_total * self.cassa_percent / 100.0
-            cassa_line = self.env['sale.order.line'].new({
-                'order_id': self.id,
-                'product_id': auto_product.id,
-                'product_uom': auto_product.uom_id.id,
-                'name': f"[AUTO] Cassa Previdenziale {self.cassa_percent:.1f}%",
-                'price_unit': cassa_amount,
-                'product_uom_qty': 1.0,
-                'tax_id': [(6, 0, [tax_22.id])] if tax_22 else [(6, 0, [])],
-                'sequence': 999,
-                'qty_delivered_method': 'manual',
-            })
-            new_lines += cassa_line
+                auto_product_cassa = self._get_or_create_auto_product('cassa')
+                cassa_amount = base_total * self.cassa_percent / 100.0
+                _logger.info(f"Cassa amount: {cassa_amount}")
+                
+                cassa_line = self.env['sale.order.line'].new({
+                    'product_id': auto_product_cassa.id,
+                    'product_uom': auto_product_cassa.uom_id.id,
+                    'name': f"[AUTO] Cassa Previdenziale {self.cassa_percent:.1f}%",
+                    'price_unit': cassa_amount,
+                    'product_uom_qty': 1.0,
+                    'tax_id': [(6, 0, [tax_22.id])] if tax_22 else [(6, 0, [])],
+                    'sequence': 999,
+                })
+                new_lines += cassa_line
+                _logger.info("Riga cassa aggiunta")
 
-        # Poi calcola la ritenuta includendo la cassa
-        if self.apply_withholding:
-            withholding_base = base_total + cassa_amount  # Include la cassa nella base
-            ritenuta_amount = -withholding_base * self.withholding_percent / 100.0
-            ritenuta_line = self.env['sale.order.line'].new({
-                'order_id': self.id,
-                'product_id': auto_product.id,
-                'product_uom': auto_product.uom_id.id,
-                'name': f"[AUTO] Ritenuta d'acconto {self.withholding_percent:.1f}%",
-                'price_unit': ritenuta_amount,
-                'product_uom_qty': 1.0,
-                'tax_id': [(6, 0, [])],
-                'sequence': 1000,
-                'qty_delivered_method': 'manual',
-            })
-            new_lines += ritenuta_line
+            # Poi calcola la ritenuta includendo la cassa
+            if self.apply_withholding:
+                _logger.info("Calcolo ritenuta...")
+                auto_product_ritenuta = self._get_or_create_auto_product('ritenuta')
+                withholding_base = base_total + cassa_amount  # Include la cassa nella base
+                ritenuta_amount = -withholding_base * self.withholding_percent / 100.0
+                _logger.info(f"Ritenuta amount: {ritenuta_amount}")
+                
+                ritenuta_line = self.env['sale.order.line'].new({
+                    'product_id': auto_product_ritenuta.id,
+                    'product_uom': auto_product_ritenuta.uom_id.id,
+                    'name': f"[AUTO] Ritenuta d'acconto {self.withholding_percent:.1f}%",
+                    'price_unit': ritenuta_amount,
+                    'product_uom_qty': 1.0,
+                    'tax_id': [(6, 0, [])],
+                    'sequence': 1000,
+                })
+                new_lines += ritenuta_line
+                _logger.info("Riga ritenuta aggiunta")
 
-        self.order_line = new_lines
+            _logger.info(f"Totale righe finali: {len(new_lines)}")
+            self.order_line = new_lines
+            
+        except Exception as e:
+            _logger.error(f"Errore in _onchange_withholding_cassa: {e}", exc_info=True)
+            # Non bloccare l'operazione, continua senza righe automatiche
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -190,8 +228,11 @@ class SaleOrder(models.Model):
         
         # Processa ogni ordine creato
         for order in orders.filtered(lambda o: o.state == 'draft'):
-            order._sync_auto_lines()
-            
+            try:
+                order._sync_auto_lines()
+            except Exception as e:
+                _logger.error(f"Errore in create per ordine {order.id}: {e}")
+                
         return orders
 
     def write(self, vals):
@@ -199,62 +240,70 @@ class SaleOrder(models.Model):
         result = super().write(vals)
         if any(key in vals for key in ['apply_withholding', 'withholding_percent', 'apply_cassa', 'cassa_percent', 'order_line']):
             for order in self.filtered(lambda o: o.state == 'draft'):
-                order._sync_auto_lines()
+                try:
+                    order._sync_auto_lines()
+                except Exception as e:
+                    _logger.error(f"Errore in write per ordine {order.id}: {e}")
         return result
 
     def _sync_auto_lines(self):
         """Sincronizza le righe automatiche (chiamata al salvataggio)"""
-        if self.state != 'draft':
-            return
+        try:
+            if self.state != 'draft':
+                return
 
-        # Rimuovi righe automatiche esistenti
-        auto_lines = self.order_line.filtered(lambda l: l.name and l.name.startswith('[AUTO]'))
-        auto_lines.unlink()
+            # Rimuovi righe automatiche esistenti
+            auto_lines = self.order_line.filtered(lambda l: l.name and l.name.startswith('[AUTO]'))
+            if auto_lines:
+                auto_lines.unlink()
 
-        # Calcola base per righe normali
-        normal_lines = self.order_line.filtered(lambda l: not (l.name and l.name.startswith('[AUTO]')))
-        base_total = sum(normal_lines.mapped('price_subtotal'))
-        
-        if not base_total:
-            return
+            # Calcola base per righe normali
+            normal_lines = self.order_line.filtered(lambda l: not (l.name and l.name.startswith('[AUTO]')))
+            base_total = sum(normal_lines.mapped('price_subtotal'))
+            
+            if not base_total:
+                return
 
-        # Ottieni il prodotto per le righe automatiche
-        auto_product = self._get_or_create_auto_product()
+            # Calcola prima la cassa
+            cassa_amount = 0
+            if self.apply_cassa:
+                tax_22 = self.env['account.tax'].search([
+                    ('type_tax_use', '=', 'sale'),
+                    ('amount', '=', 22),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
 
-        # Calcola prima la cassa
-        cassa_amount = 0
-        if self.apply_cassa:
-            tax_22 = self.env['account.tax'].search([
-                ('type_tax_use', '=', 'sale'),
-                ('amount', '=', 22),
-                ('company_id', '=', self.company_id.id)
-            ], limit=1)
+                auto_product_cassa = self._get_or_create_auto_product('cassa')
+                cassa_amount = base_total * self.cassa_percent / 100.0
+                
+                self.env['sale.order.line'].create({
+                    'order_id': self.id,
+                    'product_id': auto_product_cassa.id,
+                    'product_uom': auto_product_cassa.uom_id.id,
+                    'name': f"[AUTO] Cassa Previdenziale {self.cassa_percent:.1f}%",
+                    'price_unit': cassa_amount,
+                    'product_uom_qty': 1.0,
+                    'tax_id': [(6, 0, [tax_22.id])] if tax_22 else [(6, 0, [])],
+                    'sequence': 999,
+                })
 
-            cassa_amount = base_total * self.cassa_percent / 100.0
-            self.env['sale.order.line'].create({
-                'order_id': self.id,
-                'product_id': auto_product.id,
-                'product_uom': auto_product.uom_id.id,
-                'name': f"[AUTO] Cassa Previdenziale {self.cassa_percent:.1f}%",
-                'price_unit': cassa_amount,
-                'product_uom_qty': 1.0,
-                'tax_id': [(6, 0, [tax_22.id])] if tax_22 else [(6, 0, [])],
-                'sequence': 999,
-                'qty_delivered_method': 'manual',
-            })
-
-        # Poi calcola la ritenuta includendo la cassa
-        if self.apply_withholding:
-            withholding_base = base_total + cassa_amount  # Include la cassa nella base
-            ritenuta_amount = -withholding_base * self.withholding_percent / 100.0
-            self.env['sale.order.line'].create({
-                'order_id': self.id,
-                'product_id': auto_product.id,
-                'product_uom': auto_product.uom_id.id,
-                'name': f"[AUTO] Ritenuta d'acconto {self.withholding_percent:.1f}%",
-                'price_unit': ritenuta_amount,
-                'product_uom_qty': 1.0,
-                'tax_id': [(6, 0, [])],
-                'sequence': 1000,
-                'qty_delivered_method': 'manual',
-            })
+            # Poi calcola la ritenuta includendo la cassa
+            if self.apply_withholding:
+                auto_product_ritenuta = self._get_or_create_auto_product('ritenuta')
+                withholding_base = base_total + cassa_amount  # Include la cassa nella base
+                ritenuta_amount = -withholding_base * self.withholding_percent / 100.0
+                
+                self.env['sale.order.line'].create({
+                    'order_id': self.id,
+                    'product_id': auto_product_ritenuta.id,
+                    'product_uom': auto_product_ritenuta.uom_id.id,
+                    'name': f"[AUTO] Ritenuta d'acconto {self.withholding_percent:.1f}%",
+                    'price_unit': ritenuta_amount,
+                    'product_uom_qty': 1.0,
+                    'tax_id': [(6, 0, [])],
+                    'sequence': 1000,
+                })
+                
+        except Exception as e:
+            _logger.error(f"Errore in _sync_auto_lines per ordine {self.id}: {e}")
+            # Non bloccare l'operazione
