@@ -81,7 +81,7 @@
     </template>
 
     <!-- Estensione vista portale Abbonamenti - CORRETTA -->
-    <template id="portal_subscription_content_inherit" inherit_id="sale_subscription.portal_subscription_page" priority="20">
+    <template id="portal_subscription_content_inherit" inherit_id="sale_subscription.subscription_portal_content" priority="20">
         <!-- Opzione 1: Aggiungere dopo il contenuto principale -->
         <xpath expr="//div[hasclass('o_portal_content')]" position="inside">
             <div class="row mt-4" t-if="subscription.apply_cassa or subscription.apply_withholding">
