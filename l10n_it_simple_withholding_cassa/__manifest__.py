@@ -25,9 +25,7 @@
         #'views/report_invoice_bank_details.xml',    # nuovo
         'views/report_saleorder_bank_details.xml',  # nuovo
         'views/assets.xml',
-    ],
-    'qweb': [
-        'views/portal_sale_order_templates.xml',  # Rimuovi il commento
+        'views/portal_sale_order_templates.xml',  # Aggiungi questa riga
     ],
     'installable': True,
     'application': False,
