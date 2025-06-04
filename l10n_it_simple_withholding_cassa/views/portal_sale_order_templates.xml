@@ -80,17 +80,18 @@
         </xpath>
     </template>
 
-    <!-- Estensione vista portale Abbonamenti -->
-    <template id="portal_subscription_content_inherit" inherit_id="sale_subscription.portal_subscription_page">
-        <xpath expr="//div[hasclass('o_portal_sale_sidebar')]" position="inside">
-            <div class="card mt-3" t-if="subscription.apply_cassa or subscription.apply_withholding">
-                <div class="card-header">
-                    <h4>Dettagli Fiscali</h4>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col">
-                            <table class="table table-sm">
+    <!-- Estensione vista portale Abbonamenti - CORRETTA -->
+    <template id="portal_subscription_content_inherit" inherit_id="sale_subscription.portal_subscription_page" priority="20">
+        <!-- Opzione 1: Aggiungere dopo il contenuto principale -->
+        <xpath expr="//div[hasclass('o_portal_content')]" position="inside">
+            <div class="row mt-4" t-if="subscription.apply_cassa or subscription.apply_withholding">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h4>Dettagli Fiscali</h4>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm table-borderless">
                                 <tr t-if="subscription.apply_cassa">
                                     <td>Cassa Previdenziale (<span t-esc="subscription.cassa_percent"/>%)</td>
                                     <td class="text-end">
