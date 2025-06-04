@@ -80,51 +80,43 @@
         </xpath>
     </template>
 
-    <!-- Estensione vista portale Abbonamenti -->
-    <template id="portal_subscription_content_inherit" inherit_id="sale_subscription.subscription_portal_content" priority="20">
-        <xpath expr="//div[@class='o_portal_content']//div[@class='table-responsive']" position="after">
-            <div class="row mt-4" t-if="subscription.apply_cassa or subscription.apply_withholding">
-                <div class="col-lg-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">Dettagli Fiscali</h5>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-sm table-borderless mb-0">
-                                <tbody>
-                                    <tr t-if="subscription.apply_cassa">
-                                        <td>Cassa Previdenziale (<span t-esc="subscription.cassa_percent"/>%)</td>
-                                        <td class="text-end">
-                                            <span t-esc="subscription.cassa_amount" 
-                                                  t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>Totale Documento</td>
-                                        <td class="text-end">
-                                            <span t-esc="subscription.total_gross"
-                                                  t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/>
-                                        </td>
-                                    </tr>
-                                    <tr t-if="subscription.apply_withholding">
-                                        <td>Ritenuta d'acconto (<span t-esc="subscription.withholding_percent"/>%)</td>
-                                        <td class="text-end text-danger">
-                                            -<span t-esc="subscription.withholding_amount"
-                                                  t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/>
-                                        </td>
-                                    </tr>
-                                    <tr class="border-top">
-                                        <td><strong>Netto a Pagare</strong></td>
-                                        <td class="text-end">
-                                            <strong><span t-esc="subscription.net_amount"
-                                                  t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/></strong>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+    <!-- Estensione vista portale Abbonamenti - AGGIUNTA NUOVA -->
+    <template id="portal_subscription_inherit" inherit_id="sale_subscription.portal_subscription_page" priority="20">
+        <xpath expr="//section[@id='details']//table[hasclass('table')]" position="after">
+            <div class="table-responsive mt-3" t-if="subscription.apply_cassa or subscription.apply_withholding">
+                <h4>Dettagli Fiscali</h4>
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr t-if="subscription.apply_cassa">
+                            <th scope="row">Cassa Previdenziale (<span t-esc="subscription.cassa_percent"/>%)</th>
+                            <td>
+                                <span t-esc="subscription.cassa_amount" 
+                                      t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Totale lordo</th>
+                            <td>
+                                <span t-esc="subscription.total_gross"
+                                      t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/>
+                            </td>
+                        </tr>
+                        <tr t-if="subscription.apply_withholding">
+                            <th scope="row">Ritenuta d'acconto (<span t-esc="subscription.withholding_percent"/>%)</th>
+                            <td>
+                                <span t-esc="subscription.withholding_amount"
+                                      t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/>
+                            </td>
+                        </tr>
+                        <tr class="border-top">
+                            <th scope="row"><strong>Netto a Pagare</strong></th>
+                            <td>
+                                <strong><span t-esc="subscription.net_amount"
+                                      t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/></strong>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </xpath>
     </template>

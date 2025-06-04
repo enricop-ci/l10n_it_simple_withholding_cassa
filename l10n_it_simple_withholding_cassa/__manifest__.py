@@ -18,18 +18,18 @@
         'sale_subscription',  # Aggiungi questa dipendenza
     ],
     'data': [
+        'security/portal_security.xml',  # Prima le regole di sicurezza
         'views/res_company_view.xml',
         'views/account_move_view.xml',
         'views/sale_order_view.xml',
         'views/report_saleorder_template.xml',
         'views/report_invoice_template.xml',
         'views/report_saleorder_bank_details.xml',
-        'views/portal_sale_order_templates.xml',  # Aggiungere qui invece che in assets
         'views/assets.xml',
     ],
     'assets': {
         'web.assets_frontend': [
-            #'views/portal_sale_order_templates.xml',
+            'views/portal_sale_order_templates.xml',
         ],
     },
     'installable': True,
