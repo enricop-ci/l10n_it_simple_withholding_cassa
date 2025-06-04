@@ -5,12 +5,6 @@
     <!-- Sostituiamo completamente la tabella dei totali -->
     <xpath expr="//div[@id='total']//table[contains(@class, 'o_total_table')]" position="replace">
       <table class="table o_total_table table-borderless custom-total-table">
-        <tr t-if="o.apply_cassa">
-          <td><strong>Cassa Previdenziale:</strong></td>
-          <td class="text-end">
-            <span t-field="o.cassa_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-          </td>
-        </tr>
         <tr>
           <td><strong>Imponibile (con cassa):</strong></td>
           <td class="text-end">
@@ -27,12 +21,6 @@
           <td><strong>Totale Documento:</strong></td>
           <td class="text-end">
             <span t-field="o.total_gross" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-          </td>
-        </tr>
-        <tr t-if="o.apply_withholding">
-          <td><strong>Ritenuta d'acconto:</strong></td>
-          <td class="text-end">
-            <span t-field="o.withholding_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
           </td>
         </tr>
         <tr class="border-black">
