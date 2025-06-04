@@ -1,247 +1,49 @@
-from odoo import api, models, fields
-
-class AccountMove(models.Model):
-    _inherit = 'account.move'
-
-    apply_withholding = fields.Boolean(
-        string="Applica Ritenuta d'acconto",
-        default=lambda self: self.env.company.enable_withholding_tax
-    )
-    withholding_percent = fields.Float(string="Ritenuta %", default=20.0)
-
-    apply_cassa = fields.Boolean(
-        string="Applica Cassa Previdenziale",
-        default=lambda self: self.env.company.enable_cassa_previdenziale
-    )
-    cassa_percent = fields.Float(string="Cassa %", default=4.0)
-
-    # Campi per memorizzare gli importi calcolati
-    amount_total_gross = fields.Monetary(
-        string="Totale Lordo", 
-        compute='_compute_amount', 
-        store=True,
-        help="Totale fattura prima della ritenuta d'acconto"
-    )
-    cassa_amount = fields.Monetary(
-        string="Importo Cassa", 
-        compute='_compute_amount', 
-        store=True,
-        help="Importo della cassa previdenziale"
-    )
-    withholding_amount = fields.Monetary(
-        string="Importo Ritenuta", 
-        compute='_compute_amount', 
-        store=True,
-        help="Importo della ritenuta d'acconto"
-    )
-
-    @api.onchange('invoice_line_ids', 'apply_withholding', 'withholding_percent', 'apply_cassa', 'cassa_percent')
-    def _onchange_withholding_cassa(self):
-        try:
-            if self.move_type not in ['out_invoice', 'out_refund'] or self.state != 'draft':
-                return
-
-            original_lines = self.invoice_line_ids.filtered(lambda l: not (l.name and l.name.startswith('[AUTO]')))
-            self.invoice_line_ids = original_lines
-
-            base_total = sum(original_lines.mapped('price_subtotal'))
-            new_lines = original_lines
-
-            # Calculate cassa first
-            cassa_amount = 0
-            if self.apply_cassa and base_total:
-                # Usa il conto 310200 per la cassa previdenziale
-                cassa_account = self.env['account.account'].search([
-                    ('code', '=', '310200')
-                ], limit=1)
-                
-                if not cassa_account:
-                    # Se non trova il conto, usa quello di default del journal
-                    cassa_account = self.journal_id.default_account_id
-                
-                # Trova l'imposta IVA 22%
-                tax_22 = self.env['account.tax'].search([
-                    ('type_tax_use', '=', 'sale'),
-                    ('amount', '=', 22),
-                ], limit=1)
-
-                cassa_amount = base_total * self.cassa_percent / 100.0
-                new_lines += self.env['account.move.line'].new({
-                    'name': f"[AUTO] Cassa Previdenziale {self.cassa_percent:.1f}%",
-                    'price_unit': cassa_amount,
-                    'quantity': 1.0,
-                    'account_id': cassa_account.id,
-                    'tax_ids': [(6, 0, [tax_22.id])] if tax_22 else [],
-                })
-
-            # Then calculate withholding including cassa
-            if self.apply_withholding and base_total:
-                # Usa il conto 160900 per la ritenuta d'acconto
-                withholding_account = self.env['account.account'].search([
-                    ('code', '=', '160900')
-                ], limit=1)
-                
-                if not withholding_account:
-                    # Se non trova il conto, usa quello di default del journal
-                    withholding_account = self.journal_id.default_account_id
-
-                withholding_base = base_total + cassa_amount
-                ritenuta_amount = - withholding_base * self.withholding_percent / 100.0
-                new_lines += self.env['account.move.line'].new({
-                    'name': f"[AUTO] Ritenuta d'acconto {self.withholding_percent:.1f}%",
-                    'price_unit': ritenuta_amount,
-                    'quantity': 1.0,
-                    'account_id': withholding_account.id,
-                })
-
-            self.invoice_line_ids = new_lines
-            
-        except Exception as e:
-            # Log dell'errore ma non bloccare la fattura
-            import logging
-            _logger = logging.getLogger(__name__)
-            _logger.error(f"Errore in _onchange_withholding_cassa: {e}")
-            return
-
-        self.invoice_line_ids = new_lines
-
-    @api.depends(
-        'invoice_line_ids.price_subtotal',
-        'invoice_line_ids.tax_ids',
-        'apply_withholding',
-        'withholding_percent',
-        'apply_cassa',
-        'cassa_percent',
-    )
-    def _compute_amount(self):
-        super()._compute_amount()
-        for move in self:
-            if move.move_type not in ['out_invoice', 'out_refund']:
-                continue
-
-            # Separa le righe normali da quelle auto
-            normal_lines = move.invoice_line_ids.filtered(lambda l: not (l.name and l.name.startswith('[AUTO]')))
-            auto_lines = move.invoice_line_ids - normal_lines
-            
-            # Calcola imponibile base dalle righe normali
-            amount_untaxed = sum(normal_lines.mapped('price_subtotal'))
-
-            # Trova riga cassa e ritenuta
-            cassa_line = auto_lines.filtered(lambda l: 'Cassa Previdenziale' in (l.name or ''))
-            ritenuta_line = auto_lines.filtered(lambda l: 'Ritenuta' in (l.name or ''))
-
-            # Prendi i valori dalle righe
-            cassa_amount = sum(cassa_line.mapped('price_subtotal')) if cassa_line else 0.0
-            withholding_amount = -sum(ritenuta_line.mapped('price_subtotal')) if ritenuta_line else 0.0
-
-            # CORREZIONE: Calcola IVA totale usando il metodo corretto
-            # Invece di price_tax (che non esiste), calcola la differenza
-            amount_tax = 0.0
-            for line in move.invoice_line_ids:
-                if line.tax_ids:
-                    # Calcola le tasse per ogni riga
-                    tax_results = line.tax_ids.compute_all(
-                        line.price_unit,
-                        currency=move.currency_id,
-                        quantity=line.quantity,
-                        product=line.product_id,
-                        partner=move.partner_id
-                    )
-                    amount_tax += sum(tax['amount'] for tax in tax_results['taxes'])
-
-            # Calcola totali
-            total_gross = amount_untaxed + cassa_amount + amount_tax
-            total_net = total_gross - withholding_amount
-
-            # Assegnazione ai campi
-            move.amount_untaxed = amount_untaxed
-            move.amount_tax = amount_tax
-            # amount_total dovrebbe essere quello che il cliente paga (con ritenuta dedotta)
-            move.amount_total = total_net
-            move.amount_residual = total_net
-            # Campi personalizzati
-            move.amount_total_gross = total_gross
-            move.cassa_amount = cassa_amount
-            move.withholding_amount = withholding_amount
-
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <template id="sale_order_portal_content_inherit" inherit_id="sale.sale_order_portal_content">
-        <!-- Aggiungiamo le righe auto dopo la tabella delle righe normali -->
-        <xpath expr="//table[@id='sales_order_table']" position="after">
-            <div class="row" t-if="sale_order.apply_cassa or sale_order.apply_withholding">
-                <div class="col-lg-12">
+    <template id="portal_sale_order_content_inherit" inherit_id="sale.portal_sale_order_page">
+        <!-- Sostituiamo la tabella dei totali -->
+        <xpath expr="//div[hasclass('row justify-content-end')]" position="replace">
+            <div class="row justify-content-end">
+                <div class="col-lg-4">
                     <table class="table table-sm">
-                        <tbody>
-                            <tr t-if="sale_order.apply_cassa">
-                                <td>Cassa Previdenziale (<span t-field="sale_order.cassa_percent"/>%)</td>
-                                <td class="text-end">
-                                    <span t-field="sale_order.cassa_amount"
-                                          t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
-                                </td>
-                            </tr>
-                            <tr t-if="sale_order.apply_withholding">
-                                <td>Ritenuta d'acconto (<span t-field="sale_order.withholding_percent"/>%)</td>
-                                <td class="text-end">
-                                    <span t-field="sale_order.withholding_amount"
-                                          t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
-                                </td>
-                            </tr>
-                        </tbody>
+                        <tr>
+                            <td>Imponibile:</td>
+                            <td class="text-end">
+                                <span t-field="sale_order.amount_untaxed" t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
+                            </td>
+                        </tr>
+                        <tr t-if="sale_order.apply_cassa">
+                            <td>Cassa Previdenziale:</td>
+                            <td class="text-end">
+                                <span t-field="sale_order.cassa_amount" t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>IVA:</td>
+                            <td class="text-end">
+                                <span t-field="sale_order.amount_tax" t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Totale Documento:</td>
+                            <td class="text-end">
+                                <span t-field="sale_order.total_gross" t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
+                            </td>
+                        </tr>
+                        <tr t-if="sale_order.apply_withholding">
+                            <td>Ritenuta d'acconto:</td>
+                            <td class="text-end">
+                                <span t-field="sale_order.withholding_amount" t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
+                            </td>
+                        </tr>
+                        <tr class="border-top">
+                            <td><strong>Netto a Pagare:</strong></td>
+                            <td class="text-end">
+                                <strong><span t-field="sale_order.net_amount" t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/></strong>
+                            </td>
+                        </tr>
                     </table>
                 </div>
-            </div>
-        </xpath>
-
-        <!-- Modifichiamo la tabella dei totali -->
-        <xpath expr="//div[hasclass('row')]//div[hasclass('col-lg-4')]" position="replace">
-            <div class="col-lg-4">
-                <table class="table table-sm">
-                    <tr>
-                        <td>Imponibile:</td>
-                        <td class="text-end">
-                            <span t-field="sale_order.amount_untaxed"
-                                  t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
-                        </td>
-                    </tr>
-                    <tr t-if="sale_order.apply_cassa">
-                        <td>Cassa Previdenziale:</td>
-                        <td class="text-end">
-                            <span t-field="sale_order.cassa_amount"
-                                  t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>IVA:</td>
-                        <td class="text-end">
-                            <span t-field="sale_order.amount_tax"
-                                  t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Totale Documento:</td>
-                        <td class="text-end">
-                            <span t-field="sale_order.total_gross"
-                                  t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
-                        </td>
-                    </tr>
-                    <tr t-if="sale_order.apply_withholding">
-                        <td>Ritenuta d'acconto:</td>
-                        <td class="text-end">
-                            <span t-field="sale_order.withholding_amount"
-                                  t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
-                        </td>
-                    </tr>
-                    <tr class="border-top">
-                        <td><strong>Netto a Pagare:</strong></td>
-                        <td class="text-end">
-                            <strong>
-                                <span t-field="sale_order.net_amount"
-                                      t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
-                            </strong>
-                        </td>
-                    </tr>
-                </table>
             </div>
         </xpath>
     </template>
