@@ -83,7 +83,7 @@
     <!-- Estensione vista portale Abbonamenti - AGGIUNTA NUOVA -->
     <template id="portal_subscription_inherit" inherit_id="sale_subscription.portal_subscription_page" priority="20">
         <xpath expr="//section[@id='details']//table[hasclass('table')]" position="after">
-            <div class="table-responsive mt-3" t-if="subscription.apply_cassa or subscription.apply_withholding">
+            <div class="table-responsive mt-3">
                 <h4>Dettagli Fiscali</h4>
                 <table class="table table-borderless">
                     <tbody>
@@ -95,7 +95,21 @@
                             </td>
                         </tr>
                         <tr>
-                            <th scope="row">Totale lordo</th>
+                            <th scope="row">Imponibile</th>
+                            <td>
+                                <span t-esc="subscription.amount_untaxed"
+                                      t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">IVA 22%</th>
+                            <td>
+                                <span t-esc="subscription.amount_tax"
+                                      t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Totale Documento</th>
                             <td>
                                 <span t-esc="subscription.total_gross"
                                       t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/>
@@ -103,8 +117,8 @@
                         </tr>
                         <tr t-if="subscription.apply_withholding">
                             <th scope="row">Ritenuta d'acconto (<span t-esc="subscription.withholding_percent"/>%)</th>
-                            <td>
-                                <span t-esc="subscription.withholding_amount"
+                            <td class="text-danger">
+                                -<span t-esc="subscription.withholding_amount"
                                       t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/>
                             </td>
                         </tr>
