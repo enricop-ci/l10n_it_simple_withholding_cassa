@@ -24,11 +24,12 @@
         'views/report_saleorder_template.xml',
         'views/report_invoice_template.xml',
         'views/report_saleorder_bank_details.xml',
+        'views/portal_sale_order_templates.xml',  # Aggiungere qui invece che in assets
         'views/assets.xml',
     ],
     'assets': {
         'web.assets_frontend': [
-            'views/portal_sale_order_templates.xml',
+            #'views/portal_sale_order_templates.xml',
         ],
     },
     'installable': True,
