@@ -24,8 +24,12 @@
         'views/report_invoice_template.xml',
         'views/report_saleorder_bank_details.xml',
         'views/assets.xml',
-        'views/portal_sale_order_templates.xml',  # Mantieni alla fine
     ],
+    'assets': {
+        'web.assets_frontend': [
+            'views/portal_sale_order_templates.xml',
+        ],
+    },
     'installable': True,
     'application': False,
 }
