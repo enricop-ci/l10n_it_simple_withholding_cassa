@@ -15,6 +15,7 @@
         'account',
         'sale',
         'portal',  # Aggiungi questa dipendenza
+        'sale_subscription',  # Aggiungi questa dipendenza
     ],
     'data': [
         'views/res_company_view.xml',

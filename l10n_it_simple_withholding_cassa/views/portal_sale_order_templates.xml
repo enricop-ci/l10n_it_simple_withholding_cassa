@@ -79,4 +79,44 @@
             </div>
         </xpath>
     </template>
+
+    <!-- Estensione vista portale Abbonamenti -->
+    <template id="portal_subscription_inherit" inherit_id="sale_subscription.portal_subscription_page" priority="20">
+        <xpath expr="//div[@id='subscription_content']//table[@class='table table-sm']" position="after">
+            <div class="table-responsive mt-3">
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr t-if="subscription.apply_cassa">
+                            <th scope="row">Cassa Previdenziale</th>
+                            <td>
+                                <span t-esc="subscription.cassa_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': subscription.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Totale lordo</th>
+                            <td>
+                                <span t-esc="subscription.total_gross"
+                                      t-options="{'widget': 'monetary', 'display_currency': subscription.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr t-if="subscription.apply_withholding">
+                            <th scope="row">Ritenuta d'acconto</th>
+                            <td>
+                                <span t-esc="subscription.withholding_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': subscription.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Netto a pagare</th>
+                            <td>
+                                <span t-esc="subscription.net_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': subscription.currency_id}" />
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </xpath>
+    </template>
 </odoo>
