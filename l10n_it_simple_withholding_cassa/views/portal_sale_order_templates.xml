@@ -1,52 +1,81 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <template id="portal_sale_order_content_inherit" inherit_id="sale.portal_order_page">
-        <!-- Aggiungiamo la nostra tabella personalizzata dopo quella esistente -->
-        <xpath expr="//div[@class='card-body']" position="after">
-            <div class="card-footer">
-                <div class="row justify-content-end">
-                    <div class="col-lg-4">
-                        <h5>Riepilogo Totali</h5>
-                        <table class="table table-sm">
-                            <tr>
-                                <td>Imponibile:</td>
-                                <td class="text-end">
-                                    <span t-field="sale_order.amount_untaxed" t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
-                                </td>
-                            </tr>
-                            <tr t-if="sale_order.apply_cassa">
-                                <td t-out="'Cassa Previdenziale ' + str(sale_order.cassa_percent) + '%:'"/>
-                                <td class="text-end">
-                                    <span t-field="sale_order.cassa_amount" t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><span t-field="sale_order.vat_label"/>:</td>
-                                <td class="text-end">
-                                    <span t-field="sale_order.amount_tax" t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Totale Documento:</strong></td>
-                                <td class="text-end">
-                                    <strong><span t-field="sale_order.total_gross" t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/></strong>
-                                </td>
-                            </tr>
-                            <tr t-if="sale_order.apply_withholding">
-                                <td t-out="'Ritenuta d\'acconto ' + str(sale_order.withholding_percent) + '%:'"/>
-                                <td class="text-end text-danger">
-                                    -<span t-field="sale_order.withholding_amount" t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/>
-                                </td>
-                            </tr>
-                            <tr class="border-top">
-                                <td><strong>Netto a Pagare:</strong></td>
-                                <td class="text-end">
-                                    <strong><span t-field="sale_order.net_amount" t-options='{"widget": "monetary", "display_currency": sale_order.currency_id}'/></strong>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
+    <!-- Estensione vista portale Fatture -->
+    <template id="portal_invoice_inherit" inherit_id="account.portal_invoice_page" priority="20">
+        <xpath expr="//div[@id='invoice_content']//table[@class='table table-sm']" position="after">
+            <div class="table-responsive mt-3">
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr t-if="invoice.apply_cassa">
+                            <th scope="row">Cassa Previdenziale</th>
+                            <td>
+                                <span t-esc="invoice.cassa_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Totale lordo</th>
+                            <td>
+                                <span t-esc="invoice.total_gross"
+                                      t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr t-if="invoice.apply_withholding">
+                            <th scope="row">Ritenuta d'acconto</th>
+                            <td>
+                                <span t-esc="invoice.withholding_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Netto a pagare</th>
+                            <td>
+                                <span t-esc="invoice.net_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}" />
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </xpath>
+    </template>
+
+    <!-- Estensione vista portale Preventivi -->
+    <template id="portal_sale_inherit" inherit_id="sale.portal_my_quotations" priority="20">
+        <xpath expr="//div[@id='quotation_content']//table[@class='table table-sm']" position="after">
+            <div class="table-responsive mt-3">
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr t-if="sale_order.apply_cassa">
+                            <th scope="row">Cassa Previdenziale</th>
+                            <td>
+                                <span t-esc="sale_order.cassa_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': sale_order.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Totale lordo</th>
+                            <td>
+                                <span t-esc="sale_order.total_gross"
+                                      t-options="{'widget': 'monetary', 'display_currency': sale_order.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr t-if="sale_order.apply_withholding">
+                            <th scope="row">Ritenuta d'acconto</th>
+                            <td>
+                                <span t-esc="sale_order.withholding_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': sale_order.currency_id}" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Netto a pagare</th>
+                            <td>
+                                <span t-esc="sale_order.net_amount"
+                                      t-options="{'widget': 'monetary', 'display_currency': sale_order.currency_id}" />
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </xpath>
     </template>
