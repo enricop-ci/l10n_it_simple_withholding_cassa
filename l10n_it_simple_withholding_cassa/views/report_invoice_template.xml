@@ -2,44 +2,34 @@
 <odoo>
   <template id="report_invoice_document_custom" inherit_id="account.report_invoice_document">
 
-    <!-- Sostituiamo completamente la tabella dei totali -->
+    <!-- Remove auto lines and update totals -->
     <xpath expr="//div[@id='total']//table[contains(@class, 'o_total_table')]" position="replace">
       <table class="table o_total_table table-borderless custom-total-table">
         <tr>
-          <td><strong>Imponibile:</strong></td>
-          <td class="text-end">
-            <span t-field="o.amount_untaxed" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-          </td>
-        </tr>
-        <tr t-if="o.apply_cassa">
-          <td><strong>Cassa Previdenziale (<t t-esc="o.cassa_percent"/>%):</strong></td>
-          <td class="text-end">
-            <span t-field="o.cassa_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-          </td>
+            <td><strong>Imponibile:</strong></td>
+            <td class="text-end">
+                <span t-esc="sum(o.invoice_line_ids.filtered(lambda l: not l.name.startswith('[AUTO_RITENUTA]')).mapped('price_subtotal'))" 
+                      t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+            </td>
         </tr>
         <tr>
-          <td><strong>IVA 22%:</strong></td>
-          <td class="text-end">
-            <span t-field="o.amount_tax" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-          </td>
+            <td><strong>IVA 22%:</strong></td>
+            <td class="text-end">
+                <span t-field="o.amount_tax" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+            </td>
+        </tr>
+        <tr>
+            <td><strong>Totale Documento:</strong></td>
+            <td class="text-end">
+                <span t-esc="sum(o.invoice_line_ids.filtered(lambda l: not l.name.startswith('[AUTO_RITENUTA]')).mapped('price_total'))" 
+                      t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+            </td>
         </tr>
         <tr class="border-black">
-          <td><strong>Totale Documento:</strong></td>
-          <td class="text-end">
-            <span t-field="o.total_gross" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-          </td>
-        </tr>
-        <tr t-if="o.apply_withholding">
-          <td><strong>Ritenuta d'acconto (<t t-esc="o.withholding_percent"/>%):</strong></td>
-          <td class="text-end text-danger">
-            -<span t-field="o.withholding_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-          </td>
-        </tr>
-        <tr class="border-black">
-          <td><strong>Netto a Pagare:</strong></td>
-          <td class="text-end">
-            <span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-          </td>
+            <td><strong>Netto a Pagare:</strong></td>
+            <td class="text-end">
+                <span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+            </td>
         </tr>
       </table>
     </xpath>
@@ -64,4 +54,3 @@
 
   </template>
 </odoo>
-
