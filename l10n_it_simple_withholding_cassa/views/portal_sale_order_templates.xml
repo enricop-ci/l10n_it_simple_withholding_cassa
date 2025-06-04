@@ -2,7 +2,7 @@
 <odoo>
     <template id="portal_sale_order_content_inherit" inherit_id="sale.portal_order_page">
         <!-- Sostituiamo la tabella dei totali -->
-        <xpath expr="//div[hasclass('row justify-content-end')]" position="replace">
+        <xpath expr="//div[contains(@class, 'row justify-content-end')]" position="replace">
             <div class="row justify-content-end">
                 <div class="col-lg-4">
                     <table class="table table-sm">
