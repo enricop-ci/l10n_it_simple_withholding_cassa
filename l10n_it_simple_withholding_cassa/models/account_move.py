@@ -24,6 +24,13 @@ class AccountMove(models.Model):
         string="Totale lordo",
         compute="_compute_amounts", store=True)
 
+    # Campo alias per compatibilità con il sistema di pagamenti
+    amount_total_gross = fields.Monetary(
+        string="Totale lordo (compatibilità)",
+        compute="_compute_amount_total_gross", 
+        store=True
+    )
+
     withholding_amount = fields.Monetary(
         string="Importo Ritenuta",
         compute="_compute_amounts", store=True)
@@ -31,6 +38,11 @@ class AccountMove(models.Model):
     net_amount = fields.Monetary(
         string='Netto a Pagare',
         compute="_compute_amounts", store=True)
+
+    @api.depends('total_gross')
+    def _compute_amount_total_gross(self):
+        for move in self:
+            move.amount_total_gross = move.total_gross
 
     @api.depends(
         'invoice_line_ids.price_subtotal',
@@ -76,4 +88,3 @@ class AccountMove(models.Model):
             move.total_gross = total_gross
             move.withholding_amount = withholding_amount
             move.net_amount = total_net
-
