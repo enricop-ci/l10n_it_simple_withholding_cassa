@@ -12,7 +12,7 @@
           </td>
         </tr>
         <tr t-if="o.apply_cassa">
-          <td><strong>Cassa Previdenziale:</strong></td>
+          <td><strong>Cassa Previdenziale (<t t-esc="o.cassa_percent"/>%):</strong></td>
           <td class="text-end">
             <span t-field="o.cassa_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
           </td>
@@ -23,14 +23,14 @@
             <span t-field="o.amount_tax" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
           </td>
         </tr>
-        <tr>
+        <tr class="border-black">
           <td><strong>Totale Documento:</strong></td>
           <td class="text-end">
             <span t-field="o.total_gross" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
           </td>
         </tr>
         <tr t-if="o.apply_withholding">
-          <td><strong>Ritenuta d'acconto:</strong></td>
+          <td><strong>Ritenuta d'acconto (<t t-esc="o.withholding_percent"/>%):</strong></td>
           <td class="text-end text-danger">
             -<span t-field="o.withholding_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
           </td>
@@ -38,7 +38,7 @@
         <tr class="border-black">
           <td><strong>Netto a Pagare:</strong></td>
           <td class="text-end">
-            <span t-field="o.net_amount" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+            <span t-field="o.amount_total" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
           </td>
         </tr>
       </table>
