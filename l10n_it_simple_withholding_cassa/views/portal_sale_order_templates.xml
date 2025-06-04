@@ -14,29 +14,28 @@
                                     <span t-field="order.amount_untaxed" t-options='{"widget": "monetary", "display_currency": order.currency_id}'/>
                                 </td>
                             </tr>
-                            <tr t-if="order.apply_cassa">
-                                <td>Cassa Previdenziale:</td>
+                            <tr t-if="order.apply_cassa and order.cassa_amount > 0">
+                                <td t-out="'Cassa Previdenziale ' + str(order.cassa_percent) + '%:'"/>
                                 <td class="text-end">
                                     <span t-field="order.cassa_amount" t-options='{"widget": "monetary", "display_currency": order.currency_id}'/>
                                 </td>
                             </tr>
                             <tr>
-                                <td>IVA:</td>
+                                <td><span t-field="order.vat_label"/>:</td>
                                 <td class="text-end">
                                     <span t-field="order.amount_tax" t-options='{"widget": "monetary", "display_currency": order.currency_id}'/>
                                 </td>
                             </tr>
                             <tr>
-                                <td>Totale Documento:</td>
+                                <td><strong>Totale Documento:</strong></td>
                                 <td class="text-end">
-                                    <span t-if="hasattr(order, 'total_gross')" t-field="order.total_gross" t-options='{"widget": "monetary", "display_currency": order.currency_id}'/>
-                                    <span t-else="" t-field="order.amount_total" t-options='{"widget": "monetary", "display_currency": order.currency_id}'/>
+                                    <strong><span t-field="order.total_gross" t-options='{"widget": "monetary", "display_currency": order.currency_id}'/></strong>
                                 </td>
                             </tr>
-                            <tr t-if="order.apply_withholding">
-                                <td>Ritenuta d'acconto:</td>
-                                <td class="text-end">
-                                    <span t-field="order.withholding_amount" t-options='{"widget": "monetary", "display_currency": order.currency_id}'/>
+                            <tr t-if="order.apply_withholding and order.withholding_amount > 0">
+                                <td t-out="'Ritenuta d\'acconto ' + str(order.withholding_percent) + '%:'"/>
+                                <td class="text-end text-danger">
+                                    -<span t-field="order.withholding_amount" t-options='{"widget": "monetary", "display_currency": order.currency_id}'/>
                                 </td>
                             </tr>
                             <tr class="border-top">
