@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <template id="portal_sale_order_content_inherit" inherit_id="sale.portal_sale_order_page">
+    <template id="portal_sale_order_content_inherit" inherit_id="sale.portal_order_page">
         <!-- Sostituiamo la tabella dei totali -->
         <xpath expr="//div[hasclass('row justify-content-end')]" position="replace">
             <div class="row justify-content-end">
