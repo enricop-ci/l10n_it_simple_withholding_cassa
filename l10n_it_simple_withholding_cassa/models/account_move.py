@@ -1,6 +1,7 @@
 from odoo import models, fields, api
 from odoo.tools import float_round
 
+
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
@@ -18,26 +19,25 @@ class AccountMove(models.Model):
 
     cassa_amount = fields.Monetary(
         string="Importo Cassa Previdenziale",
-        compute="_compute_amounts", store=True)
+        compute="_compute_fiscal_amounts", store=True)
 
     total_gross = fields.Monetary(
         string="Totale lordo",
-        compute="_compute_amounts", store=True)
+        compute="_compute_fiscal_amounts", store=True)
 
-    # Campo alias per compatibilità con il sistema di pagamenti
     amount_total_gross = fields.Monetary(
         string="Totale lordo (compatibilità)",
-        compute="_compute_amount_total_gross", 
+        compute="_compute_amount_total_gross",
         store=True
     )
 
     withholding_amount = fields.Monetary(
         string="Importo Ritenuta",
-        compute="_compute_amounts", store=True)
+        compute="_compute_fiscal_amounts", store=True)
 
     net_amount = fields.Monetary(
         string='Netto a Pagare',
-        compute="_compute_amounts", store=True)
+        compute="_compute_fiscal_amounts", store=True)
 
     @api.depends('total_gross')
     def _compute_amount_total_gross(self):
@@ -46,40 +46,51 @@ class AccountMove(models.Model):
 
     @api.depends(
         'invoice_line_ids.price_subtotal',
-        'invoice_line_ids.tax_ids',
         'apply_withholding',
         'withholding_percent',
         'apply_cassa',
         'cassa_percent',
     )
-    def _compute_amounts(self):
+    def _compute_fiscal_amounts(self):
         for move in self:
-            amount_untaxed = sum(line.price_subtotal for line in move.invoice_line_ids)
+            # Calcola solo per le righe normali (escluse quelle fiscali auto-generate)
+            normal_lines = move.invoice_line_ids.filtered(
+                lambda l: not self._is_fiscal_line(l)
+            )
+
+            amount_untaxed = sum(line.price_subtotal for line in normal_lines)
 
             # Calcolo Cassa Previdenziale
             cassa_amount = 0.0
             if move.apply_cassa:
-                cassa_amount = float_round(amount_untaxed * move.cassa_percent / 100.0, precision_rounding=move.currency_id.rounding)
+                cassa_amount = float_round(
+                    amount_untaxed * move.cassa_percent / 100.0,
+                    precision_rounding=move.currency_id.rounding
+                )
 
             base_imponibile = amount_untaxed + cassa_amount
 
             # Calcolo IVA su base con cassa
             amount_tax = 0.0
-            for line in move.invoice_line_ids:
+            for line in normal_lines:
                 base_line = line.price_subtotal
                 if move.apply_cassa:
                     base_line += base_line * move.cassa_percent / 100.0
+
                 line_taxes = line.tax_ids.filtered(lambda t: t.amount_type == 'percent')
                 line_tax_amount = sum(base_line * t.amount / 100.0 for t in line_taxes)
                 amount_tax += line_tax_amount
-            amount_tax = float_round(amount_tax, precision_rounding=move.currency_id.rounding)
 
+            amount_tax = float_round(amount_tax, precision_rounding=move.currency_id.rounding)
             total_gross = base_imponibile + amount_tax
 
             # Calcolo Ritenuta d'acconto
             withholding_amount = 0.0
             if move.apply_withholding:
-                withholding_amount = float_round(base_imponibile * move.withholding_percent / 100.0, precision_rounding=move.currency_id.rounding)
+                withholding_amount = float_round(
+                    base_imponibile * move.withholding_percent / 100.0,
+                    precision_rounding=move.currency_id.rounding
+                )
 
             total_net = float_round(total_gross - withholding_amount, precision_rounding=move.currency_id.rounding)
 
@@ -88,3 +99,10 @@ class AccountMove(models.Model):
             move.total_gross = total_gross
             move.withholding_amount = withholding_amount
             move.net_amount = total_net
+
+    def _is_fiscal_line(self, line):
+        """Identifica se una riga è una riga fiscale auto-generata"""
+        if not line.name:
+            return False
+        return ('Cassa previdenziale' in line.name or
+                'Ritenuta d\'acconto' in line.name)

@@ -8,7 +8,7 @@
         <tr>
             <td><strong>Imponibile:</strong></td>
             <td class="text-end">
-                <span t-esc="sum(o.invoice_line_ids.filtered(lambda l: not l.name.startswith('[AUTO_RITENUTA]')).mapped('price_subtotal'))" 
+                <span t-esc="sum(o.invoice_line_ids.filtered(lambda l: not l.name.startswith('[Ritenuta]')).mapped('price_subtotal'))"
                       t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
             </td>
         </tr>
@@ -19,9 +19,9 @@
             </td>
         </tr>
         <tr>
-            <td><strong>Totale Documento:</strong></td>
+            <td><strong>Totale fattura:</strong></td>
             <td class="text-end">
-                <span t-esc="sum(o.invoice_line_ids.filtered(lambda l: not l.name.startswith('[AUTO_RITENUTA]')).mapped('price_total'))" 
+                <span t-esc="sum(o.invoice_line_ids.filtered(lambda l: not l.name.startswith('[Ritenuta]')).mapped('price_total'))"
                       t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
             </td>
         </tr>

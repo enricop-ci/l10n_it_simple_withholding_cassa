@@ -1,142 +1,209 @@
-from odoo import api, models, fields
+from odoo import models, fields, api
 
-class AccountMove(models.Model):
+
+class AccountMoveLine(models.Model):
+    _inherit = 'account.move.line'
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Override create per aggiornare le righe fiscali quando si aggiunge una riga"""
+        # Se stiamo creando righe fiscali, non attivare l'aggiornamento
+        if self.env.context.get('skip_fiscal_update'):
+            return super().create(vals_list)
+
+        results = super().create(vals_list)
+
+        # Raccogli le fatture che necessitano aggiornamento
+        moves_to_update = set()
+
+        for result in results:
+            # Se è una riga di una fattura cliente/fornitore, marca per aggiornamento
+            if (result.move_id and
+                result.move_id.move_type in ['out_invoice', 'out_refund'] and
+                result.move_id.state == 'draft' and
+                not result.move_id._is_fiscal_line(result)):  # Non è una riga fiscale
+
+                moves_to_update.add(result.move_id)
+
+        # Aggiorna tutte le fatture interessate una sola volta
+        for move in moves_to_update:
+            move._update_fiscal_lines()
+
+        return results
+
+    def write(self, vals):
+        """Override write per aggiornare le righe fiscali quando si modifica una riga"""
+        # Se stiamo aggiornando righe fiscali, non attivare l'aggiornamento
+        if self.env.context.get('skip_fiscal_update'):
+            return super().write(vals)
+
+        result = super().write(vals)
+
+        # Se si modificano campi che influenzano i calcoli
+        fiscal_impact_fields = ['price_unit', 'quantity', 'tax_ids', 'product_id']
+        if any(field in vals for field in fiscal_impact_fields):
+            moves_to_update = set()
+
+            for line in self:
+                if (line.move_id and
+                    line.move_id.move_type in ['out_invoice', 'out_refund'] and
+                    line.move_id.state == 'draft' and
+                    not line.move_id._is_fiscal_line(line)):  # Non è una riga fiscale
+
+                    moves_to_update.add(line.move_id)
+
+            # Aggiorna tutte le fatture interessate
+            for move in moves_to_update:
+                move._update_fiscal_lines()
+
+        return result
+
+    def unlink(self):
+        """Override unlink per aggiornare le righe fiscali quando si elimina una riga"""
+        # Se stiamo cancellando righe fiscali, non attivare l'aggiornamento
+        if self.env.context.get('skip_fiscal_update'):
+            return super().unlink()
+
+        moves_to_update = set()
+
+        for line in self:
+            if (line.move_id and
+                line.move_id.move_type in ['out_invoice', 'out_refund'] and
+                line.move_id.state == 'draft' and
+                not line.move_id._is_fiscal_line(line)):  # Non è una riga fiscale
+
+                moves_to_update.add(line.move_id)
+
+        result = super().unlink()
+
+        # Aggiorna le fatture interessate
+        for move in moves_to_update:
+            move._update_fiscal_lines()
+
+        return result
+
+
+class AccountMoveWithFiscalLines(models.Model):
+    """Estensione di AccountMove con la logica di aggiornamento delle righe fiscali"""
     _inherit = 'account.move'
 
-    apply_withholding = fields.Boolean(
-        string="Applica Ritenuta d'acconto",
-        default=lambda self: self.env.company.enable_withholding_tax
-    )
-    withholding_percent = fields.Float(string="Ritenuta %", default=20.0)
+    def _update_fiscal_lines(self):
+        """Aggiorna le righe fiscali nella fattura"""
+        self.ensure_one()
 
-    apply_cassa = fields.Boolean(
-        string="Applica Cassa Previdenziale",
-        default=lambda self: self.env.company.enable_cassa_previdenziale
-    )
-    cassa_percent = fields.Float(string="Cassa %", default=4.0)
-
-    @api.onchange('invoice_line_ids', 'apply_withholding', 'withholding_percent', 'apply_cassa', 'cassa_percent')
-    def _onchange_withholding_cassa(self):
-        try:
-            if self.move_type not in ['out_invoice', 'out_refund'] or self.state != 'draft':
-                return
-
-            original_lines = self.invoice_line_ids.filtered(lambda l: not (l.name and l.name.startswith('[AUTO]')))
-            self.invoice_line_ids = original_lines
-
-            base_total = sum(original_lines.mapped('price_subtotal'))
-            new_lines = original_lines
-
-            # Calculate cassa first
-            cassa_amount = 0
-            if self.apply_cassa and base_total:
-                # Usa il conto 310200 per la cassa previdenziale
-                cassa_account = self.env['account.account'].search([
-                    ('code', '=', '310200')
-                ], limit=1)
-                
-                if not cassa_account:
-                    # Se non trova il conto, usa quello di default del journal
-                    cassa_account = self.journal_id.default_account_id
-                
-                # Trova l'imposta IVA 22%
-                tax_22 = self.env['account.tax'].search([
-                    ('type_tax_use', '=', 'sale'),
-                    ('amount', '=', 22),
-                ], limit=1)
-
-                cassa_amount = base_total * self.cassa_percent / 100.0
-                new_lines += self.env['account.move.line'].new({
-                    'name': f"[AUTO] Cassa Previdenziale {self.cassa_percent:.1f}%",
-                    'price_unit': cassa_amount,
-                    'quantity': 1.0,
-                    'account_id': cassa_account.id,
-                    'tax_ids': [(6, 0, [tax_22.id])] if tax_22 else [],
-                })
-
-            # Then calculate withholding including cassa
-            if self.apply_withholding and base_total:
-                # Usa il conto 160900 per la ritenuta d'acconto
-                withholding_account = self.env['account.account'].search([
-                    ('code', '=', '160900')
-                ], limit=1)
-                
-                if not withholding_account:
-                    # Se non trova il conto, usa quello di default del journal
-                    withholding_account = self.journal_id.default_account_id
-
-                withholding_base = base_total + cassa_amount
-                ritenuta_amount = - withholding_base * self.withholding_percent / 100.0
-                new_lines += self.env['account.move.line'].new({
-                    'name': f"[AUTO] Ritenuta d'acconto {self.withholding_percent:.1f}%",
-                    'price_unit': ritenuta_amount,
-                    'quantity': 1.0,
-                    'account_id': withholding_account.id,
-                })
-
-            self.invoice_line_ids = new_lines
-            
-        except Exception as e:
-            # Log dell'errore ma non bloccare la fattura
-            import logging
-            _logger = logging.getLogger(__name__)
-            _logger.error(f"Errore in _onchange_withholding_cassa: {e}")
+        if self.move_type not in ['out_invoice', 'out_refund'] or self.state != 'draft':
             return
 
-        self.invoice_line_ids = new_lines
+        # Usa il context per evitare loop infiniti invece di attributi dinamici
+        if self.env.context.get('updating_fiscal_lines'):
+            return
 
-    @api.depends(
-        'invoice_line_ids.price_subtotal',
-        'invoice_line_ids.tax_ids',
-        'apply_withholding',
-        'withholding_percent',
-        'apply_cassa',
-        'cassa_percent',
-    )
-    def _compute_amount(self):
-        super()._compute_amount()
-        for move in self:
-            if move.move_type not in ['out_invoice', 'out_refund']:
-                continue
+        # Crea un nuovo context con il flag per evitare loop
+        new_context = dict(self.env.context, updating_fiscal_lines=True, skip_fiscal_update=True)
 
-            # Separa le righe normali da quelle auto
-            normal_lines = move.invoice_line_ids.filtered(lambda l: not (l.name and l.name.startswith('[AUTO]')))
-            auto_lines = move.invoice_line_ids - normal_lines
-            
-            # Calcola imponibile base dalle righe normali
-            amount_untaxed = sum(normal_lines.mapped('price_subtotal'))
+        # Lavora con il nuovo context
+        self_with_context = self.with_context(new_context)
 
-            # Trova riga cassa e ritenuta
-            cassa_line = auto_lines.filtered(lambda l: 'Cassa Previdenziale' in (l.name or ''))
-            ritenuta_line = auto_lines.filtered(lambda l: 'Ritenuta' in (l.name or ''))
+        # Rimuovi righe fiscali esistenti
+        fiscal_lines = self_with_context.invoice_line_ids.filtered(self._is_fiscal_line)
+        if fiscal_lines:
+            fiscal_lines.unlink()
 
-            # Prendi i valori dalle righe
-            cassa_amount = sum(cassa_line.mapped('price_subtotal')) if cassa_line else 0.0
-            withholding_amount = -sum(ritenuta_line.mapped('price_subtotal')) if ritenuta_line else 0.0
+        # Calcola la base per le righe fiscali (senza le righe fiscali)
+        normal_lines = self_with_context.invoice_line_ids.filtered(lambda l: not self._is_fiscal_line(l))
+        base_amount = sum(line.price_subtotal for line in normal_lines)
 
-            # CORREZIONE: Calcola IVA totale usando il metodo corretto
-            # Invece di price_tax (che non esiste), calcola la differenza
-            amount_tax = 0.0
-            for line in move.invoice_line_ids:
-                if line.tax_ids:
-                    # Calcola le tasse per ogni riga
-                    tax_results = line.tax_ids.compute_all(
-                        line.price_unit,
-                        currency=move.currency_id,
-                        quantity=line.quantity,
-                        product=line.product_id,
-                        partner=move.partner_id
-                    )
-                    amount_tax += sum(tax['amount'] for tax in tax_results['taxes'])
+        if not base_amount:
+            return
 
-            # Calcola totali
-            total_gross = amount_untaxed + cassa_amount + amount_tax
-            total_net = total_gross - withholding_amount
+        # Trova il conto e le imposte per le righe fiscali
+        default_account = self_with_context._get_default_account()
+        main_tax_ids = self_with_context._get_main_tax_ids(normal_lines)
 
-            # Assegnazione ai campi
-            move.amount_untaxed = amount_untaxed
-            move.amount_tax = amount_tax
-            move.amount_total = total_gross
-            move.amount_residual = total_net
-            move.cassa_amount = cassa_amount
-            move.withholding_amount = withholding_amount
+        # Crea le righe fiscali
+        lines_to_create = []
+
+        # Riga cassa previdenziale
+        if self.apply_cassa and self.cassa_percent > 0:
+            cassa_amount = base_amount * (self.cassa_percent / 100.0)
+            cassa_account = self_with_context._get_fiscal_account('cassa') or default_account
+
+            if cassa_account:
+                lines_to_create.append({
+                    'name': f'Cassa previdenziale {self.cassa_percent}%',
+                    'account_id': cassa_account.id,
+                    'quantity': 1,
+                    'price_unit': cassa_amount,
+                    'tax_ids': [(6, 0, main_tax_ids)],  # Stesse imposte del prodotto principale
+                    'move_id': self.id,
+                })
+
+        # Riga ritenuta d'acconto
+        if self.apply_withholding and self.withholding_percent > 0:
+            # La ritenuta si calcola su base + cassa
+            withholding_base = base_amount
+            if self.apply_cassa:
+                withholding_base += base_amount * (self.cassa_percent / 100.0)
+
+            withholding_amount = withholding_base * (self.withholding_percent / 100.0)
+            withholding_account = self_with_context._get_fiscal_account('withholding') or default_account
+
+            if withholding_account:
+                lines_to_create.append({
+                    'name': f'Ritenuta d\'acconto {self.withholding_percent}%',
+                    'account_id': withholding_account.id,
+                    'quantity': 1,
+                    'price_unit': -withholding_amount,  # Negativo per ridurre il totale
+                    'tax_ids': [(6, 0, [])],  # Nessuna IVA sulla ritenuta
+                    'move_id': self.id,
+                })
+
+        # Crea tutte le righe fiscali in una volta con il context di protezione
+        if lines_to_create:
+            self.env['account.move.line'].with_context(new_context).create(lines_to_create)
+
+    def _get_default_account(self):
+        """Restituisce un conto di default per le righe fiscali"""
+        return self.journal_id.default_account_id
+
+    def _get_main_tax_ids(self, normal_lines):
+        """Restituisce le imposte del prodotto principale"""
+        main_line = normal_lines.filtered(lambda l: l.product_id)[:1]
+        return main_line.tax_ids.ids if main_line else []
+
+    def _get_fiscal_account(self, fiscal_type):
+        """Restituisce il conto fiscale configurato"""
+        company = self.env.company
+
+        if fiscal_type == 'cassa':
+            # Conto cassa previdenziale
+            if hasattr(company, 'cassa_account_id') and company.cassa_account_id:
+                return company.cassa_account_id
+            # Fallback: cerca il conto 310200
+            return self.env['account.account'].search([
+                ('code', '=', '310200'),
+            ], limit=1)
+
+        elif fiscal_type == 'withholding':
+            # Conto ritenuta d'acconto
+            if hasattr(company, 'withholding_account_id') and company.withholding_account_id:
+                return company.withholding_account_id
+            # Fallback: cerca il conto 160900
+            return self.env['account.account'].search([
+                ('code', '=', '160900'),
+            ], limit=1)
+
+        return None
+
+    @api.onchange('apply_cassa', 'apply_withholding', 'cassa_percent', 'withholding_percent')
+    def _onchange_fiscal_settings(self):
+        """Aggiorna le righe fiscali quando cambiano le impostazioni"""
+        if self.state == 'draft' and self.move_type in ['out_invoice', 'out_refund']:
+            # Solo messaggio informativo, l'aggiornamento avverrà automaticamente
+            if (self.apply_cassa or self.apply_withholding) and self.invoice_line_ids:
+                return {
+                    'warning': {
+                        'title': 'Aggiornamento Automatico',
+                        'message': 'Le righe fiscali verranno aggiornate automaticamente quando salvi o modifichi le righe prodotto.'
+                    }
+                }

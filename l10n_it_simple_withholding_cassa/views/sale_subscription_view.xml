@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista form per Sale Subscription -->
+    <record id="sale_subscription_view_form_inherit" model="ir.ui.view">
+        <field name="name">sale.subscription.form.inherit</field>
+        <field name="model">sale.subscription</field>
+        <field name="inherit_id" ref="sale_subscription.sale_subscription_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Aggiungi campi fiscali dopo il totale -->
+            <xpath expr="//field[@name='recurring_total']" position="after">
+                <group string="Gestione Fiscale Italiana" col="4">
+                    <field name="apply_cassa"/>
+                    <field name="cassa_percent" invisible="not apply_cassa"/>
+                    <field name="apply_withholding"/>
+                    <field name="withholding_percent" invisible="not apply_withholding"/>
+                </group>
+
+                <!-- Totali calcolati -->
+                <group string="Totali Fiscali" col="4">
+                    <field name="cassa_amount" invisible="not apply_cassa"/>
+                    <field name="total_gross"/>
+                    <field name="withholding_amount" invisible="not apply_withholding"/>
+                    <field name="net_amount" string="💰 Netto a Pagare" class="oe_subtotal_footer_separator"/>
+                </group>
+            </xpath>
+
+            <!-- Aggiungi pulsante di aggiornamento manuale -->
+            <xpath expr="//header" position="inside">
+                <button name="_update_fiscal_lines"
+                        string="🔄 Aggiorna Righe Fiscali"
+                        type="object"
+                        class="btn-secondary"
+                        invisible="state not in ['draft', 'open']"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Vista tree per Sale Subscription -->
+    <record id="sale_subscription_view_tree_inherit" model="ir.ui.view">
+        <field name="name">sale.subscription.tree.inherit</field>
+        <field name="model">sale.subscription</field>
+        <field name="inherit_id" ref="sale_subscription.sale_subscription_view_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='recurring_total']" position="after">
+                <field name="total_gross" optional="hide"/>
+                <field name="net_amount" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
